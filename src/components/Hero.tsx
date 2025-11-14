@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 import heroImage from "@/assets/hero-image.jpg";
 
 const Hero = () => {
@@ -26,19 +27,23 @@ const Hero = () => {
             Descubra a nova coleção de roupas exclusivas para mulheres que valorizam sofisticação e qualidade excepcional.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 pt-4">
-            <Button 
-              size="lg" 
-              className="bg-primary hover:bg-primary-dark text-primary-foreground shadow-medium hover:shadow-hover transition-all font-inter font-medium"
-            >
-              Explorar Coleção
-            </Button>
-            <Button 
-              variant="outline" 
-              size="lg"
-              className="border-2 border-primary text-primary hover:bg-accent font-inter font-medium"
-            >
-              Ver Novidades
-            </Button>
+            <Link to="/products">
+              <Button 
+                size="lg" 
+                className="bg-primary hover:bg-primary-dark text-primary-foreground shadow-medium hover:shadow-hover transition-all font-inter font-medium w-full sm:w-auto"
+              >
+                Explorar Coleção
+              </Button>
+            </Link>
+            <a href="#featured">
+              <Button 
+                variant="outline" 
+                size="lg"
+                className="border-2 border-primary text-primary hover:bg-accent font-inter font-medium w-full sm:w-auto"
+              >
+                Ver Novidades
+              </Button>
+            </a>
           </div>
         </div>
       </div>

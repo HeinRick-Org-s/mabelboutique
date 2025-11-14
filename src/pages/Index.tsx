@@ -1,6 +1,7 @@
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
 import ProductGrid from "@/components/ProductGrid";
+import { FeaturedCarousel } from "@/components/FeaturedCarousel";
 import Footer from "@/components/Footer";
 
 const Index = () => {
@@ -10,6 +11,9 @@ const Index = () => {
       <main>
         <Hero />
         <ProductGrid />
+        <div id="featured">
+          <FeaturedCarousel />
+        </div>
       </main>
       <Footer />
     </div>
