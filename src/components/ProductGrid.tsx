@@ -1,52 +1,14 @@
 import { ShoppingBag } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import product1 from "@/assets/product-1.jpg";
-import product2 from "@/assets/product-2.jpg";
-import product3 from "@/assets/product-3.jpg";
-import product4 from "@/assets/product-4.jpg";
-import product5 from "@/assets/product-5.jpg";
-import product6 from "@/assets/product-6.jpg";
+import { products } from "@/data/products";
+import { useCart } from "@/contexts/CartContext";
 
-const products = [
-  {
-    id: 1,
-    name: "Blazer Verde Musgo",
-    price: "R$ 1.299,00",
-    image: product1,
-  },
-  {
-    id: 2,
-    name: "Blusa Seda Branca",
-    price: "R$ 899,00",
-    image: product2,
-  },
-  {
-    id: 3,
-    name: "Calça Pantalona Verde",
-    price: "R$ 1.099,00",
-    image: product3,
-  },
-  {
-    id: 4,
-    name: "Vestido Elegante Creme",
-    price: "R$ 1.499,00",
-    image: product4,
-  },
-  {
-    id: 5,
-    name: "Suéter Verde Musgo",
-    price: "R$ 799,00",
-    image: product5,
-  },
-  {
-    id: 6,
-    name: "Casaco Alfaiataria Branco",
-    price: "R$ 1.899,00",
-    image: product6,
-  },
-];
+const displayProducts = products.slice(0, 6);
 
 const ProductGrid = () => {
+  const { addToCart } = useCart();
+
   return (
     <section className="py-16 sm:py-20 lg:py-24 bg-gradient-subtle">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -62,7 +24,7 @@ const ProductGrid = () => {
 
         {/* Products Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-          {products.map((product, index) => (
+          {displayProducts.map((product, index) => (
             <div
               key={product.id}
               className="group bg-card rounded-lg overflow-hidden shadow-soft hover:shadow-hover transition-all duration-500 animate-scale-in"
@@ -82,6 +44,7 @@ const ProductGrid = () => {
                   <Button 
                     size="sm" 
                     className="bg-background text-foreground hover:bg-primary hover:text-primary-foreground shadow-medium font-inter"
+                    onClick={() => addToCart(product)}
                   >
                     <ShoppingBag className="h-4 w-4 mr-2" />
                     Adicionar
@@ -100,6 +63,15 @@ const ProductGrid = () => {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Ver Todos Button */}
+        <div className="text-center mt-12">
+          <Link to="/products">
+            <Button size="lg" variant="outline" className="border-2 border-primary text-primary hover:bg-accent">
+              Ver Todos os Produtos
+            </Button>
+          </Link>
         </div>
       </div>
     </section>

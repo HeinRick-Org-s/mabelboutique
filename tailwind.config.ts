@@ -51,8 +51,8 @@ export default {
         },
       },
       fontFamily: {
-        playfair: ['Playfair Display', 'serif'],
-        inter: ['Inter', 'sans-serif'],
+        playfair: ['Cormorant Garamond', 'serif'],
+        inter: ['Montserrat', 'sans-serif'],
       },
       backgroundImage: {
         'gradient-hero': 'var(--gradient-hero)',

@@ -1,6 +1,9 @@
-import { ShoppingBag, Menu, Search, User } from "lucide-react";
+import { Menu, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { Link } from "react-router-dom";
+import { SearchDialog } from "./SearchDialog";
+import { CartSheet } from "./CartSheet";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -10,23 +13,20 @@ const Header = () => {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 sm:h-20 items-center justify-between">
           {/* Logo */}
-          <a href="/" className="flex items-center">
+          <Link to="/" className="flex items-center">
             <h1 className="font-playfair text-2xl sm:text-3xl font-bold text-primary tracking-wide">
               Mabel
             </h1>
-          </a>
+          </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <a href="#" className="font-inter text-sm font-medium text-foreground hover:text-primary transition-colors">
-              Nova Coleção
-            </a>
-            <a href="#" className="font-inter text-sm font-medium text-foreground hover:text-primary transition-colors">
-              Roupas
-            </a>
-            <a href="#" className="font-inter text-sm font-medium text-foreground hover:text-primary transition-colors">
-              Acessórios
-            </a>
+            <Link to="/products" className="font-inter text-sm font-medium text-foreground hover:text-primary transition-colors">
+              Produtos
+            </Link>
+            <Link to="/#featured" className="font-inter text-sm font-medium text-foreground hover:text-primary transition-colors">
+              Destaques
+            </Link>
             <a href="#" className="font-inter text-sm font-medium text-foreground hover:text-primary transition-colors">
               Sobre
             </a>
@@ -34,15 +34,11 @@ const Header = () => {
 
           {/* Actions */}
           <div className="flex items-center space-x-2 sm:space-x-4">
-            <Button variant="ghost" size="icon" className="hover:bg-accent">
-              <Search className="h-5 w-5" />
-            </Button>
+            <SearchDialog />
             <Button variant="ghost" size="icon" className="hover:bg-accent hidden sm:flex">
               <User className="h-5 w-5" />
             </Button>
-            <Button variant="ghost" size="icon" className="hover:bg-accent">
-              <ShoppingBag className="h-5 w-5" />
-            </Button>
+            <CartSheet />
             <Button 
               variant="ghost" 
               size="icon" 
@@ -58,15 +54,12 @@ const Header = () => {
         {isMenuOpen && (
           <nav className="md:hidden py-4 border-t border-border animate-fade-in">
             <div className="flex flex-col space-y-3">
-              <a href="#" className="font-inter text-sm font-medium text-foreground hover:text-primary transition-colors py-2">
-                Nova Coleção
-              </a>
-              <a href="#" className="font-inter text-sm font-medium text-foreground hover:text-primary transition-colors py-2">
-                Roupas
-              </a>
-              <a href="#" className="font-inter text-sm font-medium text-foreground hover:text-primary transition-colors py-2">
-                Acessórios
-              </a>
+              <Link to="/products" className="font-inter text-sm font-medium text-foreground hover:text-primary transition-colors py-2">
+                Produtos
+              </Link>
+              <Link to="/#featured" className="font-inter text-sm font-medium text-foreground hover:text-primary transition-colors py-2">
+                Destaques
+              </Link>
               <a href="#" className="font-inter text-sm font-medium text-foreground hover:text-primary transition-colors py-2">
                 Sobre
               </a>

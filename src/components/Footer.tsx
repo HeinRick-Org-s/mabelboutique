@@ -1,4 +1,5 @@
 import { Instagram, Facebook, Mail } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Footer = () => {
   return (
@@ -18,18 +19,13 @@ const Footer = () => {
             <h4 className="font-inter font-semibold mb-4">Navegação</h4>
             <ul className="space-y-2 font-inter text-sm">
               <li>
-                <a href="#" className="text-primary-foreground/80 hover:text-primary-foreground transition-colors">
-                  Nova Coleção
-                </a>
+                <Link to="/products" className="text-primary-foreground/80 hover:text-primary-foreground transition-colors">
+                  Produtos
+                </Link>
               </li>
               <li>
-                <a href="#" className="text-primary-foreground/80 hover:text-primary-foreground transition-colors">
-                  Roupas
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-primary-foreground/80 hover:text-primary-foreground transition-colors">
-                  Acessórios
+                <a href="/#featured" className="text-primary-foreground/80 hover:text-primary-foreground transition-colors">
+                  Destaques
                 </a>
               </li>
               <li>
