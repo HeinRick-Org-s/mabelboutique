@@ -1,6 +1,12 @@
 import product1 from "@/assets/product-1.jpg";
+import product1Alt1 from "@/assets/product-1-alt1.jpg";
+import product1Alt2 from "@/assets/product-1-alt2.jpg";
 import product2 from "@/assets/product-2.jpg";
+import product2Alt1 from "@/assets/product-2-alt1.jpg";
+import product2Alt2 from "@/assets/product-2-alt2.jpg";
 import product3 from "@/assets/product-3.jpg";
+import product3Alt1 from "@/assets/product-3-alt1.jpg";
+import product3Alt2 from "@/assets/product-3-alt2.jpg";
 import product4 from "@/assets/product-4.jpg";
 import product5 from "@/assets/product-5.jpg";
 import product6 from "@/assets/product-6.jpg";
@@ -13,8 +19,10 @@ export const products: Product[] = [
     price: "R$ 1.299,00",
     priceValue: 1299,
     image: product1,
+    images: [product1, product1Alt1, product1Alt2],
     category: "Blazers",
-    description: "Blazer elegante em verde musgo, ideal para ocasiões formais e profissionais.",
+    description: "Blazer elegante em verde musgo, ideal para ocasiões formais e profissionais. Confeccionado em tecido de alta qualidade com caimento impecável. Possui forro interno e fechamento frontal com botões. A modelagem estruturada valoriza a silhueta feminina, criando um visual sofisticado e atemporal.",
+    sizes: ["PP", "P", "M", "G", "GG"],
   },
   {
     id: 2,
@@ -22,8 +30,10 @@ export const products: Product[] = [
     price: "R$ 899,00",
     priceValue: 899,
     image: product2,
+    images: [product2, product2Alt1, product2Alt2],
     category: "Blusas",
-    description: "Blusa de seda branca com caimento perfeito e toque luxuoso.",
+    description: "Blusa de seda branca com caimento perfeito e toque luxuoso. A seda natural proporciona conforto e elegância, sendo ideal para o dia a dia ou ocasiões especiais. Possui gola clássica e botões frontais delicados. Peça versátil que combina com diversos looks.",
+    sizes: ["PP", "P", "M", "G", "GG"],
   },
   {
     id: 3,
@@ -31,8 +41,10 @@ export const products: Product[] = [
     price: "R$ 1.099,00",
     priceValue: 1099,
     image: product3,
+    images: [product3, product3Alt1, product3Alt2],
     category: "Calças",
-    description: "Calça pantalona em verde musgo com corte amplo e confortável.",
+    description: "Calça pantalona em verde musgo com corte amplo e confortável. O tecido fluido garante movimento elegante e caimento perfeito. Cintura alta com passantes para cinto e fechamento lateral discreto. Peça statement que alonga a silhueta.",
+    sizes: ["36", "38", "40", "42", "44"],
   },
   {
     id: 4,
@@ -40,8 +52,10 @@ export const products: Product[] = [
     price: "R$ 1.499,00",
     priceValue: 1499,
     image: product4,
+    images: [product4, product1, product2],
     category: "Vestidos",
-    description: "Vestido longo em tom creme, perfeito para eventos especiais.",
+    description: "Vestido longo em tom creme, perfeito para eventos especiais. Modelagem fluida que valoriza a silhueta feminina com elegância e sofisticação. Tecido nobre com caimento impecável e acabamento refinado.",
+    sizes: ["PP", "P", "M", "G", "GG"],
   },
   {
     id: 5,
@@ -49,8 +63,10 @@ export const products: Product[] = [
     price: "R$ 799,00",
     priceValue: 799,
     image: product5,
+    images: [product5, product3, product1],
     category: "Tricot",
-    description: "Suéter em tricot verde musgo, aconchegante e elegante.",
+    description: "Suéter em tricot verde musgo, aconchegante e elegante. Confeccionado em lã macia de alta qualidade, ideal para os dias mais frios. Modelagem clássica com gola redonda e mangas longas.",
+    sizes: ["PP", "P", "M", "G", "GG"],
   },
   {
     id: 6,
@@ -58,8 +74,10 @@ export const products: Product[] = [
     price: "R$ 1.899,00",
     priceValue: 1899,
     image: product6,
+    images: [product6, product2, product4],
     category: "Casacos",
-    description: "Casaco de alfaiataria branco com corte estruturado e refinado.",
+    description: "Casaco de alfaiataria branco com corte estruturado e refinado. Peça atemporal que agrega sofisticação a qualquer look. Tecido premium com excelente caimento e durabilidade.",
+    sizes: ["PP", "P", "M", "G", "GG"],
   },
   {
     id: 7,
@@ -67,8 +85,10 @@ export const products: Product[] = [
     price: "R$ 699,00",
     priceValue: 699,
     image: product1,
+    images: [product1, product2, product3],
     category: "Camisas",
-    description: "Camisa de linho em tom bege, leve e versátil.",
+    description: "Camisa de linho em tom bege, leve e versátil. Perfeita para o verão com seu tecido respirável e caimento solto. Botões de madrepérola e gola clássica.",
+    sizes: ["PP", "P", "M", "G", "GG"],
   },
   {
     id: 8,
@@ -76,8 +96,10 @@ export const products: Product[] = [
     price: "R$ 849,00",
     priceValue: 849,
     image: product2,
+    images: [product2, product3, product1],
     category: "Saias",
-    description: "Saia midi em verde musgo com acabamento impecável.",
+    description: "Saia midi em verde musgo com acabamento impecável. Modelagem evasê que favorece todos os tipos de corpo. Fechamento lateral invisível e forro interno.",
+    sizes: ["36", "38", "40", "42", "44"],
   },
   {
     id: 9,
@@ -85,8 +107,10 @@ export const products: Product[] = [
     price: "R$ 1.599,00",
     priceValue: 1599,
     image: product3,
+    images: [product3, product4, product5],
     category: "Conjuntos",
-    description: "Conjunto de tricot creme com blusa e saia coordenadas.",
+    description: "Conjunto de tricot creme com blusa e saia coordenadas. Peças que podem ser usadas juntas ou separadamente, oferecendo versatilidade ao guarda-roupa. Tricot macio e confortável.",
+    sizes: ["PP", "P", "M", "G", "GG"],
   },
   {
     id: 10,
@@ -94,8 +118,10 @@ export const products: Product[] = [
     price: "R$ 1.999,00",
     priceValue: 1999,
     image: product4,
+    images: [product4, product5, product6],
     category: "Jaquetas",
-    description: "Jaqueta em couro ecológico com design moderno.",
+    description: "Jaqueta em couro ecológico com design moderno. Material sustentável de alta qualidade com textura e aparência de couro legítimo. Fechamento frontal com zíper e bolsos laterais.",
+    sizes: ["PP", "P", "M", "G", "GG"],
   },
   {
     id: 11,
@@ -103,8 +129,10 @@ export const products: Product[] = [
     price: "R$ 1.399,00",
     priceValue: 1399,
     image: product5,
+    images: [product5, product6, product1],
     category: "Macacões",
-    description: "Macacão longo em verde musgo com amarração na cintura.",
+    description: "Macacão longo em verde musgo com amarração na cintura. Modelagem fluida e elegante, perfeita para diversas ocasiões. Tecido confortável com excelente caimento.",
+    sizes: ["PP", "P", "M", "G", "GG"],
   },
   {
     id: 12,
@@ -112,8 +140,10 @@ export const products: Product[] = [
     price: "R$ 999,00",
     priceValue: 999,
     image: product6,
+    images: [product6, product1, product2],
     category: "Tricot",
-    description: "Cardigan em lã merino com botões frontais.",
+    description: "Cardigan em lã merino com botões frontais. Peça clássica e versátil, ideal para compor looks elegantes. Lã de alta qualidade que proporciona conforto térmico sem pesar.",
+    sizes: ["PP", "P", "M", "G", "GG"],
   },
 ];
 
