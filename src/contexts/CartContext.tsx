@@ -7,8 +7,10 @@ export interface Product {
   price: string;
   priceValue: number;
   image: string;
+  images?: string[];
   category: string;
   description?: string;
+  sizes?: string[];
 }
 
 export interface CartItem extends Product {

@@ -24,12 +24,12 @@ const Header = () => {
             <Link to="/products" className="font-inter text-sm font-medium text-foreground hover:text-primary transition-colors">
               Produtos
             </Link>
-            <Link to="/#featured" className="font-inter text-sm font-medium text-foreground hover:text-primary transition-colors">
+            <a href="/#featured" className="font-inter text-sm font-medium text-foreground hover:text-primary transition-colors">
               Destaques
-            </Link>
-            <a href="#" className="font-inter text-sm font-medium text-foreground hover:text-primary transition-colors">
-              Sobre
             </a>
+            <Link to="/" className="font-inter text-sm font-medium text-foreground hover:text-primary transition-colors">
+              Sobre
+            </Link>
           </nav>
 
           {/* Actions */}
@@ -54,15 +54,27 @@ const Header = () => {
         {isMenuOpen && (
           <nav className="md:hidden py-4 border-t border-border animate-fade-in">
             <div className="flex flex-col space-y-3">
-              <Link to="/products" className="font-inter text-sm font-medium text-foreground hover:text-primary transition-colors py-2">
+              <Link 
+                to="/products" 
+                className="font-inter text-sm font-medium text-foreground hover:text-primary transition-colors py-2"
+                onClick={() => setIsMenuOpen(false)}
+              >
                 Produtos
               </Link>
-              <Link to="/#featured" className="font-inter text-sm font-medium text-foreground hover:text-primary transition-colors py-2">
+              <a 
+                href="/#featured" 
+                className="font-inter text-sm font-medium text-foreground hover:text-primary transition-colors py-2"
+                onClick={() => setIsMenuOpen(false)}
+              >
                 Destaques
-              </Link>
-              <a href="#" className="font-inter text-sm font-medium text-foreground hover:text-primary transition-colors py-2">
-                Sobre
               </a>
+              <Link 
+                to="/" 
+                className="font-inter text-sm font-medium text-foreground hover:text-primary transition-colors py-2"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Sobre
+              </Link>
             </div>
           </nav>
         )}

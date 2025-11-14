@@ -25,9 +25,10 @@ const ProductGrid = () => {
         {/* Products Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {displayProducts.map((product, index) => (
-            <div
+            <Link
               key={product.id}
-              className="group bg-card rounded-lg overflow-hidden shadow-soft hover:shadow-hover transition-all duration-500 animate-scale-in"
+              to={`/product/${product.id}`}
+              className="group bg-card rounded-lg overflow-hidden shadow-soft hover:shadow-hover transition-all duration-500 animate-scale-in block"
               style={{ animationDelay: `${index * 100}ms` }}
             >
               {/* Product Image */}
@@ -44,7 +45,10 @@ const ProductGrid = () => {
                   <Button 
                     size="sm" 
                     className="bg-background text-foreground hover:bg-primary hover:text-primary-foreground shadow-medium font-inter"
-                    onClick={() => addToCart(product)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      addToCart(product);
+                    }}
                   >
                     <ShoppingBag className="h-4 w-4 mr-2" />
                     Adicionar
@@ -61,7 +65,7 @@ const ProductGrid = () => {
                   {product.price}
                 </p>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
 
