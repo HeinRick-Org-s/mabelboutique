@@ -7,9 +7,21 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import { featuredProducts } from "@/data/products";
+import { useFeaturedProducts } from "@/hooks/useProducts";
+import { Loader2 } from "lucide-react";
 
 export const FeaturedCarousel = () => {
+  const { data: featuredProducts = [], isLoading } = useFeaturedProducts(6);
+
+  if (isLoading) {
+    return (
+      <section className="py-16 sm:py-20 lg:py-24 bg-background">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex justify-center items-center min-h-[400px]">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="py-16 sm:py-20 lg:py-24 bg-background">

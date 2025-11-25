@@ -1,10 +1,20 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { products } from "@/data/products";
-
-const displayProducts = products.slice(0, 6);
+import { useFeaturedProducts } from "@/hooks/useProducts";
+import { Loader2 } from "lucide-react";
 
 const ProductGrid = () => {
+  const { data: products = [], isLoading } = useFeaturedProducts(6);
+
+  if (isLoading) {
+    return (
+      <section className="py-16 sm:py-20 lg:py-24 bg-gradient-subtle">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex justify-center items-center min-h-[400px]">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="py-16 sm:py-20 lg:py-24 bg-gradient-subtle">
@@ -21,7 +31,7 @@ const ProductGrid = () => {
 
         {/* Products Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-          {displayProducts.map((product, index) => (
+          {products.map((product, index) => (
             <Link
               key={product.id}
               to={`/product/${product.id}`}
