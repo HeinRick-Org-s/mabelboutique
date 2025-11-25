@@ -55,27 +55,62 @@ const OrderTracking = () => {
   const [loadingSession, setLoadingSession] = useState(false);
 
   useEffect(() => {
-    if (sessionId) {
-      handleSessionSuccess();
-    } else if (codeFromUrl) {
-      handleSearch();
-    }
-  }, [sessionId, codeFromUrl]);
+    const codeParam = searchParams.get("code");
 
-  const handleSessionSuccess = async () => {
-    setLoadingSession(true);
+    if (codeParam) {
+      // Se temos code na URL, é o order_id
+      fetchOrderById(codeParam);
+    }
+  }, [searchParams]);
+
+  const fetchOrderById = async (orderId: string) => {
+    setLoading(true);
     try {
       // Aguardar processamento do webhook (pode levar alguns segundos)
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Buscar order pelo ID
+      const { data: orderData, error: orderError } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("id", orderId)
+        .single();
+
+      if (orderError) throw orderError;
+
+      if (!orderData) {
+        toast({
+          title: "Pedido não encontrado",
+          description: "Aguarde alguns instantes e tente novamente.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Buscar itens do pedido
+      const { data: itemsData, error: itemsError } = await supabase
+        .from("order_items")
+        .select("*")
+        .eq("order_id", orderData.id);
+
+      if (itemsError) throw itemsError;
+
+      setOrder({ ...orderData, items: itemsData || [] });
+      setTrackingCode(orderData.tracking_code || orderId);
+
       toast({
         title: "Pagamento confirmado!",
-        description: "Seu pedido foi recebido com sucesso. Enviamos um email com os detalhes e código de rastreamento.",
+        description: "Seu pedido foi recebido com sucesso. Enviamos um email com os detalhes.",
       });
     } catch (error) {
-      console.error("Erro ao processar sessão:", error);
+      console.error("Erro ao buscar pedido:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar o pedido. Tente novamente.",
+        variant: "destructive",
+      });
     } finally {
-      setLoadingSession(false);
+      setLoading(false);
     }
   };
 
@@ -91,15 +126,30 @@ const OrderTracking = () => {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // Tentar buscar por tracking_code ou por ID
+      let orderData = null;
+
+      // Primeiro tenta por tracking_code
+      const { data: trackingData } = await supabase
         .from("orders")
         .select("*")
         .eq("tracking_code", trackingCode.toUpperCase())
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
+      if (trackingData) {
+        orderData = trackingData;
+      } else {
+        // Se não encontrou, tenta por ID
+        const { data: idData } = await supabase
+          .from("orders")
+          .select("*")
+          .eq("id", trackingCode)
+          .maybeSingle();
 
-      if (!data) {
+        orderData = idData;
+      }
+
+      if (!orderData) {
         toast({
           title: "Pedido não encontrado",
           description: "Verifique o código de rastreamento e tente novamente.",
@@ -113,11 +163,16 @@ const OrderTracking = () => {
       const { data: items, error: itemsError } = await supabase
         .from("order_items")
         .select("*")
-        .eq("order_id", data.id);
+        .eq("order_id", orderData.id);
 
       if (itemsError) throw itemsError;
 
-      setOrder({ ...data, items: items || [] });
+      setOrder({ ...orderData, items: items || [] });
+
+      toast({
+        title: "Pedido encontrado!",
+        description: `Pedido #${orderData.order_number}`,
+      });
     } catch (error) {
       console.error("Erro ao buscar pedido:", error);
       toast({
@@ -187,14 +242,14 @@ const OrderTracking = () => {
     });
   };
 
-  if (loadingSession) {
+  if (loading) {
     return (
       <div className="min-h-screen flex flex-col">
         <Header />
         <main className="flex-1 bg-gradient-subtle flex items-center justify-center">
           <div className="text-center">
             <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-            <p className="text-lg text-foreground">Processando seu pagamento...</p>
+            <p className="text-lg text-foreground">Carregando pedido...</p>
             <p className="text-sm text-muted-foreground mt-2">Aguarde alguns instantes</p>
           </div>
         </main>
