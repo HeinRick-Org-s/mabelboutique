@@ -283,29 +283,55 @@ const Checkout = () => {
     try {
       // Verificar estoque antes de processar pagamento
       for (const item of items) {
-        const { data: product } = await supabase
+        const { data: product, error: productError } = await supabase
           .from("products")
           .select("variants")
           .eq("id", item.id)
           .single();
 
-        if (product) {
-          const variants = product.variants as any[];
-          const colorVariant = variants.find((v: any) => v.color === item.selectedColor);
-          
-          if (colorVariant) {
-            const sizeVariant = colorVariant.sizes?.find((s: any) => s.size === item.selectedSize);
-            
-            if (!sizeVariant || sizeVariant.stock < item.quantity) {
-              toast({
-                title: "Estoque insuficiente",
-                description: `O produto "${item.name}" (${item.selectedColor} - ${item.selectedSize}) não tem estoque suficiente.`,
-                variant: "destructive",
-              });
-              setSubmitting(false);
-              return;
-            }
-          }
+        if (productError || !product) {
+          toast({
+            title: "Erro ao verificar estoque",
+            description: `Não foi possível verificar o estoque do produto "${item.name}".`,
+            variant: "destructive",
+          });
+          setSubmitting(false);
+          return;
+        }
+
+        const variants = product.variants as any[];
+        const colorVariant = variants.find((v: any) => v.color === item.selectedColor);
+        
+        if (!colorVariant) {
+          toast({
+            title: "Variante não encontrada",
+            description: `A cor "${item.selectedColor}" não está mais disponível para o produto "${item.name}".`,
+            variant: "destructive",
+          });
+          setSubmitting(false);
+          return;
+        }
+
+        const sizeVariant = colorVariant.sizes?.find((s: any) => s.size === item.selectedSize);
+        
+        if (!sizeVariant) {
+          toast({
+            title: "Tamanho não encontrado",
+            description: `O tamanho "${item.selectedSize}" não está disponível para a cor "${item.selectedColor}" do produto "${item.name}".`,
+            variant: "destructive",
+          });
+          setSubmitting(false);
+          return;
+        }
+
+        if (sizeVariant.stock < item.quantity) {
+          toast({
+            title: "Estoque insuficiente",
+            description: `O produto "${item.name}" (${item.selectedColor} - ${item.selectedSize}) só tem ${sizeVariant.stock} unidade(s) disponível(is). Você tentou adicionar ${item.quantity}.`,
+            variant: "destructive",
+          });
+          setSubmitting(false);
+          return;
         }
       }
 
