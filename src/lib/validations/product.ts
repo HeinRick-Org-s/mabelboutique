@@ -41,6 +41,12 @@ export const productSchema = z.object({
     .url({ message: "URL de vídeo inválida" })
     .optional()
     .or(z.literal("")),
+  
+  stock: z.number()
+    .int({ message: "Estoque deve ser um número inteiro" })
+    .min(0, { message: "Estoque não pode ser negativo" }),
+  
+  is_visible: z.boolean(),
 });
 
 export type ProductFormData = z.infer<typeof productSchema>;

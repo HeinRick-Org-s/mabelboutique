@@ -22,7 +22,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import ProductForm from "@/components/admin/ProductForm";
 import EmptyState from "@/components/admin/EmptyState";
-import { useProducts, Product } from "@/hooks/useProducts";
+import { useAdminProducts, Product } from "@/hooks/useProducts";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -33,7 +33,7 @@ const ProductsManagement = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
 
-  const { data: products = [], isLoading } = useProducts();
+  const { data: products = [], isLoading } = useAdminProducts();
   const queryClient = useQueryClient();
 
   const filteredProducts = products.filter((product) =>
@@ -50,6 +50,7 @@ const ProductsManagement = () => {
       if (error) throw error;
 
       await queryClient.invalidateQueries({ queryKey: ["products"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin-products"] });
       await queryClient.invalidateQueries({ queryKey: ["featured-products"] });
       
       setIsFormOpen(false);
@@ -78,6 +79,7 @@ const ProductsManagement = () => {
       if (error) throw error;
 
       await queryClient.invalidateQueries({ queryKey: ["products"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin-products"] });
       await queryClient.invalidateQueries({ queryKey: ["featured-products"] });
       
       setIsFormOpen(false);
@@ -107,6 +109,7 @@ const ProductsManagement = () => {
       if (error) throw error;
 
       await queryClient.invalidateQueries({ queryKey: ["products"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin-products"] });
       await queryClient.invalidateQueries({ queryKey: ["featured-products"] });
       
       toast({
@@ -207,6 +210,12 @@ const ProductsManagement = () => {
                         <th className="text-left py-4 px-6 font-inter font-semibold text-foreground">
                           Preço
                         </th>
+                        <th className="text-center py-4 px-6 font-inter font-semibold text-foreground">
+                          Estoque
+                        </th>
+                        <th className="text-center py-4 px-6 font-inter font-semibold text-foreground">
+                          Visível
+                        </th>
                         <th className="text-right py-4 px-6 font-inter font-semibold text-foreground">
                           Ações
                         </th>
@@ -230,6 +239,26 @@ const ProductsManagement = () => {
                           </td>
                           <td className="py-4 px-6 font-inter font-semibold text-primary">
                             {product.price}
+                          </td>
+                          <td className="py-4 px-6 text-center">
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
+                              product.stock === 0 
+                                ? 'bg-destructive/10 text-destructive' 
+                                : product.stock < 10 
+                                ? 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400' 
+                                : 'bg-green-500/10 text-green-700 dark:text-green-400'
+                            }`}>
+                              {product.stock}
+                            </span>
+                          </td>
+                          <td className="py-4 px-6 text-center">
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
+                              product.is_visible 
+                                ? 'bg-green-500/10 text-green-700 dark:text-green-400' 
+                                : 'bg-muted text-muted-foreground'
+                            }`}>
+                              {product.is_visible ? 'Sim' : 'Não'}
+                            </span>
                           </td>
                           <td className="py-4 px-6">
                             <div className="flex items-center justify-end gap-2">

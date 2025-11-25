@@ -23,10 +23,12 @@ export type Database = {
           id: string
           image: string
           images: string[]
+          is_visible: boolean
           name: string
           price: string
           price_value: number
           sizes: string[] | null
+          stock: number
           updated_at: string | null
           video: string | null
         }
@@ -38,10 +40,12 @@ export type Database = {
           id?: string
           image: string
           images: string[]
+          is_visible?: boolean
           name: string
           price: string
           price_value: number
           sizes?: string[] | null
+          stock?: number
           updated_at?: string | null
           video?: string | null
         }
@@ -53,10 +57,12 @@ export type Database = {
           id?: string
           image?: string
           images?: string[]
+          is_visible?: boolean
           name?: string
           price?: string
           price_value?: number
           sizes?: string[] | null
+          stock?: number
           updated_at?: string | null
           video?: string | null
         }

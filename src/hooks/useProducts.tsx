@@ -13,6 +13,8 @@ export interface Product {
   description?: string;
   sizes?: string[];
   colors?: string[];
+  stock: number;
+  is_visible: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -20,6 +22,22 @@ export interface Product {
 export const useProducts = () => {
   return useQuery({
     queryKey: ["products"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("is_visible", true)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data as Product[];
+    },
+  });
+};
+
+export const useAdminProducts = () => {
+  return useQuery({
+    queryKey: ["admin-products"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
@@ -39,6 +57,7 @@ export const useFeaturedProducts = (limit: number = 6) => {
       const { data, error } = await supabase
         .from("products")
         .select("*")
+        .eq("is_visible", true)
         .order("created_at", { ascending: false })
         .limit(limit);
 

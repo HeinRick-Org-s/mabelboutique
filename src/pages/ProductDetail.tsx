@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ShoppingBag, ChevronLeft, Loader2 } from "lucide-react";
+import { ShoppingBag, ChevronLeft, Loader2, Package } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -51,7 +51,7 @@ const ProductDetail = () => {
     );
   }
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (product.sizes && product.sizes.length > 0 && !selectedSize) {
       toast({
         title: "Selecione um tamanho",
@@ -68,7 +68,7 @@ const ProductDetail = () => {
       });
       return;
     }
-    addToCart(product);
+    await addToCart(product);
   };
 
   const productImages = product.images || [product.image];
@@ -90,6 +90,12 @@ const ProductDetail = () => {
           <div className="space-y-6">
             {/* Image Carousel */}
             <div className="relative">
+              {product.stock === 0 && (
+                <div className="absolute top-4 left-4 z-10 bg-destructive text-destructive-foreground px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2">
+                  <Package className="h-4 w-4" />
+                  Sem Estoque
+                </div>
+              )}
               <Carousel className="w-full">
                 <CarouselContent>
                   {productImages.map((img, index) => (
@@ -130,10 +136,20 @@ const ProductDetail = () => {
               <h1 className="font-playfair text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-6">
                 {product.name}
               </h1>
-              <div className="inline-block bg-gradient-to-r from-primary/10 to-primary/5 px-6 py-4 rounded-xl border-2 border-primary/20">
-                <p className="font-playfair text-3xl sm:text-4xl font-bold text-primary">
-                  {product.price}
-                </p>
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="inline-block bg-gradient-to-r from-primary/10 to-primary/5 px-6 py-4 rounded-xl border-2 border-primary/20">
+                  <p className="font-playfair text-3xl sm:text-4xl font-bold text-primary">
+                    {product.price}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Package className="h-4 w-4" />
+                  <span>
+                    {product.stock > 0 
+                      ? `${product.stock} unidade(s) disponível(is)` 
+                      : "Produto indisponível"}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -199,9 +215,10 @@ const ProductDetail = () => {
               size="lg"
               className="w-full mb-6 h-14 text-lg font-semibold shadow-medium hover:shadow-hover transition-all"
               onClick={handleAddToCart}
+              disabled={product.stock === 0}
             >
               <ShoppingBag className="h-6 w-6 mr-3" />
-              Adicionar ao Carrinho
+              {product.stock === 0 ? "Produto Indisponível" : "Adicionar ao Carrinho"}
             </Button>
 
             {/* Additional Info */}

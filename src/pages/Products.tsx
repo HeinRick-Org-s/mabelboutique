@@ -114,9 +114,14 @@ const Products = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             {filteredProducts.map((product) => (
-            <div key={product.id} className="group">
+            <div key={product.id} className="group relative">
               <Link to={`/product/${product.id}`}>
                 <div className="relative overflow-hidden rounded-lg bg-muted mb-4 aspect-square">
+                  {product.stock === 0 && (
+                    <div className="absolute top-4 left-4 z-10 bg-destructive text-destructive-foreground px-3 py-1 rounded-md text-sm font-semibold">
+                      Sem Estoque
+                    </div>
+                  )}
                   <Carousel className="w-full h-full">
                     <CarouselContent>
                       {(product.images || [product.image]).map((img, index) => (
