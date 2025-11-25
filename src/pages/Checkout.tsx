@@ -299,35 +299,25 @@ const Checkout = () => {
           return;
         }
 
-        const variants = product.variants as any[];
-        const colorVariant = variants.find((v: any) => v.color === item.selectedColor);
-        
-        if (!colorVariant) {
+        const variants = (product.variants as any[]) || [];
+        const matchingVariant = variants.find(
+          (v: any) => v.color === item.selectedColor && v.size === item.selectedSize
+        );
+
+        if (!matchingVariant) {
           toast({
             title: "Variante não encontrada",
-            description: `A cor "${item.selectedColor}" não está mais disponível para o produto "${item.name}".`,
+            description: `A combinação de cor "${item.selectedColor}" e tamanho "${item.selectedSize}" não está mais disponível para o produto "${item.name}".`,
             variant: "destructive",
           });
           setSubmitting(false);
           return;
         }
 
-        const sizeVariant = colorVariant.sizes?.find((s: any) => s.size === item.selectedSize);
-        
-        if (!sizeVariant) {
-          toast({
-            title: "Tamanho não encontrado",
-            description: `O tamanho "${item.selectedSize}" não está disponível para a cor "${item.selectedColor}" do produto "${item.name}".`,
-            variant: "destructive",
-          });
-          setSubmitting(false);
-          return;
-        }
-
-        if (sizeVariant.stock < item.quantity) {
+        if (matchingVariant.stock < item.quantity) {
           toast({
             title: "Estoque insuficiente",
-            description: `O produto "${item.name}" (${item.selectedColor} - ${item.selectedSize}) só tem ${sizeVariant.stock} unidade(s) disponível(is). Você tentou adicionar ${item.quantity}.`,
+            description: `O produto "${item.name}" (${item.selectedColor} - ${item.selectedSize}) só tem ${matchingVariant.stock} unidade(s) disponível(is). Você tentou adicionar ${item.quantity}.`,
             variant: "destructive",
           });
           setSubmitting(false);
@@ -380,6 +370,7 @@ const Checkout = () => {
             shippingCost: deliveryMethod === "pickup" ? 0 : shippingCost,
             discountAmount: discount,
             orderData,
+            paymentMethod,
           },
         }
       );
@@ -728,7 +719,7 @@ const Checkout = () => {
               <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
                 <div className="flex items-center space-x-3 p-4 border-2 border-border rounded-lg">
                   <RadioGroupItem value="credit-card" id="credit-card" />
-                  <Label htmlFor="credit-card">Cartão de Crédito</Label>
+                  <Label htmlFor="credit-card">Cartão de Crédito ou Débito</Label>
                 </div>
                 <div className="flex items-center space-x-3 p-4 border-2 border-border rounded-lg">
                   <RadioGroupItem value="pix" id="pix" />
@@ -737,9 +728,19 @@ const Checkout = () => {
               </RadioGroup>
 
               <div className="mt-4 p-4 bg-muted/50 rounded-lg">
-                <p className="text-xs text-muted-foreground">
-                  <strong>Nota:</strong> Sistema mockado. Integração com Stripe será implementada.
-                </p>
+                {paymentMethod === "pix" ? (
+                  <p className="text-xs text-muted-foreground">
+                    Ao finalizar o pedido, você será redirecionada para o ambiente seguro da
+                    <span className="font-semibold"> Stripe</span> para pagar via <span className="font-semibold">PIX</span>
+                    , com QR Code e chave Pix gerados automaticamente.
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Ao finalizar o pedido, você será redirecionada para o ambiente seguro da
+                    <span className="font-semibold"> Stripe</span> para pagar com
+                    <span className="font-semibold"> cartão de crédito ou débito</span>.
+                  </p>
+                )}
               </div>
             </div>
 
