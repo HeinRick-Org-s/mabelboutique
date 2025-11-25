@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Trash2, Plus, Tag, AlertCircle } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Trash2, Plus, Tag, AlertCircle, ArrowLeft, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -59,6 +60,7 @@ const CouponsManagement = () => {
   const [discountType, setDiscountType] = useState<"percentage" | "fixed">("percentage");
   const [discountValue, setDiscountValue] = useState("");
   const [expiresInHours, setExpiresInHours] = useState("24");
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     fetchCoupons();
@@ -215,26 +217,37 @@ const CouponsManagement = () => {
     return new Date(expiresAt) < new Date();
   };
 
+  const filteredCoupons = coupons.filter((coupon) =>
+    coupon.code.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
-    <div className="space-y-4 sm:space-y-6 p-4 sm:p-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Cupons de Desconto</h1>
-          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-            Gerencie os cupons de desconto da loja
-          </p>
-        </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="w-full sm:w-auto">
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Cupom
-            </Button>
-          </DialogTrigger>
+    <div className="min-h-screen bg-gradient-subtle">
+      {/* Header */}
+      <header className="bg-card shadow-soft border-b border-border">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-4">
+              <Link to="/admin/dashboard">
+                <Button variant="ghost" size="icon">
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+              </Link>
+              <h1 className="font-playfair text-2xl font-bold text-foreground">
+                Gerenciar Cupons
+              </h1>
+            </div>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-5 w-5 mr-2" />
+                  Novo Cupom
+                </Button>
+              </DialogTrigger>
           <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto">
             <form onSubmit={handleCreateCoupon}>
               <DialogHeader>
-                <DialogTitle>Criar Novo Cupom</DialogTitle>
+                <DialogTitle className="font-playfair text-2xl">Criar Novo Cupom</DialogTitle>
                 <DialogDescription>
                   Preencha os dados do cupom de desconto
                 </DialogDescription>
@@ -304,43 +317,64 @@ const CouponsManagement = () => {
           </DialogContent>
         </Dialog>
       </div>
+    </div>
+  </header>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Cupons Cadastrados</CardTitle>
-          <CardDescription>
-            Lista de todos os cupons de desconto
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <p className="text-center py-8 text-muted-foreground">Carregando...</p>
-          ) : coupons.length === 0 ? (
-            <div className="text-center py-12">
-              <Tag className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-lg font-semibold text-foreground">Nenhum cupom cadastrado</p>
-              <p className="text-muted-foreground mt-1">
-                Crie seu primeiro cupom de desconto
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {loading ? (
+        <div className="flex justify-center items-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      ) : coupons.length === 0 ? (
+        <div className="bg-card rounded-xl shadow-soft border border-border p-12 text-center">
+          <Tag className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+          <h2 className="font-playfair text-2xl font-bold text-foreground mb-2">
+            Nenhum cupom cadastrado
+          </h2>
+          <p className="text-muted-foreground font-inter">
+            Crie seu primeiro cupom de desconto
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* Search */}
+          <div className="mb-6">
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Buscar cupons..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 h-12"
+              />
+            </div>
+          </div>
+
+          {filteredCoupons.length === 0 ? (
+            <div className="bg-card rounded-xl shadow-soft border border-border p-12 text-center">
+              <p className="text-muted-foreground font-inter">
+                Nenhum cupom encontrado com "{searchQuery}"
               </p>
             </div>
           ) : (
             <>
-              {/* Mobile Cards */}
-              <div className="block sm:hidden space-y-4">
-                {coupons.map((coupon) => {
-                  const expired = isExpired(coupon.expires_at);
-                  return (
-                    <Card key={coupon.id}>
-                      <CardContent className="p-4 space-y-3">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-1">
-                            <p className="font-mono font-semibold text-lg">{coupon.code}</p>
-                            <p className="text-foreground font-medium">
-                              {coupon.discount_type === "percentage"
-                                ? `${coupon.discount_value}%`
-                                : `R$ ${coupon.discount_value.toFixed(2)}`}
-                            </p>
-                          </div>
+            {/* Mobile Cards */}
+            <div className="block sm:hidden space-y-4">
+              {filteredCoupons.map((coupon) => {
+                const expired = isExpired(coupon.expires_at);
+                return (
+                  <Card key={coupon.id}>
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1">
+                          <p className="font-mono font-semibold text-lg">{coupon.code}</p>
+                          <p className="text-foreground font-inter font-medium">
+                            {coupon.discount_type === "percentage"
+                              ? `${coupon.discount_value}%`
+                              : `R$ ${coupon.discount_value.toFixed(2)}`}
+                          </p>
+                        </div>
                           <div>
                             {expired ? (
                               <Badge variant="destructive" className="flex items-center gap-1">
@@ -352,57 +386,58 @@ const CouponsManagement = () => {
                             ) : (
                               <Badge variant="secondary">Inativo</Badge>
                             )}
-                          </div>
                         </div>
-                        <div className="text-sm text-muted-foreground">
-                          Expira em: {format(new Date(coupon.expires_at), "dd/MM/yyyy HH:mm")}
-                        </div>
-                        <div className="flex gap-2 pt-2">
-                          {!expired && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="flex-1"
-                              onClick={() => handleToggleActive(coupon.id, coupon.is_active)}
-                            >
-                              {coupon.is_active ? "Desativar" : "Ativar"}
-                            </Button>
-                          )}
+                      </div>
+                      <div className="text-sm text-muted-foreground font-inter">
+                        Expira em: {format(new Date(coupon.expires_at), "dd/MM/yyyy HH:mm")}
+                      </div>
+                      <div className="flex gap-2 pt-2">
+                        {!expired && (
                           <Button
-                            variant="destructive"
+                            variant="outline"
                             size="sm"
-                            onClick={() => handleDeleteCoupon(coupon.id)}
+                            className="flex-1"
+                            onClick={() => handleToggleActive(coupon.id, coupon.is_active)}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            {coupon.is_active ? "Desativar" : "Ativar"}
                           </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
+                        )}
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDeleteCoupon(coupon.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
 
-              {/* Desktop Table */}
-              <div className="hidden sm:block rounded-md border overflow-x-auto">
+            {/* Desktop Table */}
+            <div className="hidden sm:block bg-card rounded-xl shadow-soft border border-border overflow-hidden">
+              <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Código</TableHead>
-                      <TableHead>Desconto</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Expira em</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
+                    <TableRow className="bg-muted/50 border-b border-border">
+                      <TableHead className="font-inter font-semibold text-foreground">Código</TableHead>
+                      <TableHead className="font-inter font-semibold text-foreground">Desconto</TableHead>
+                      <TableHead className="font-inter font-semibold text-foreground">Status</TableHead>
+                      <TableHead className="font-inter font-semibold text-foreground">Expira em</TableHead>
+                      <TableHead className="text-right font-inter font-semibold text-foreground">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {coupons.map((coupon) => {
+                    {filteredCoupons.map((coupon) => {
                       const expired = isExpired(coupon.expires_at);
                       return (
-                        <TableRow key={coupon.id}>
-                          <TableCell className="font-mono font-semibold">
+                        <TableRow key={coupon.id} className="border-b border-border hover:bg-muted/30">
+                          <TableCell className="font-mono font-semibold text-foreground">
                             {coupon.code}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="font-inter font-semibold text-primary">
                             {coupon.discount_type === "percentage"
                               ? `${coupon.discount_value}%`
                               : `R$ ${coupon.discount_value.toFixed(2)}`}
@@ -421,7 +456,7 @@ const CouponsManagement = () => {
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="text-sm">
+                          <TableCell className="text-sm font-inter text-muted-foreground">
                             {format(new Date(coupon.expires_at), "dd/MM/yyyy HH:mm")}
                           </TableCell>
                           <TableCell className="text-right">
@@ -450,10 +485,12 @@ const CouponsManagement = () => {
                   </TableBody>
                 </Table>
               </div>
-            </>
+            </div>
+          </>
           )}
-        </CardContent>
-      </Card>
+        </>
+      )}
+    </div>
     </div>
   );
 };
