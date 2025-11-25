@@ -95,7 +95,7 @@ const AdminDashboard = () => {
           <h2 className="font-playfair text-2xl font-bold text-foreground mb-6">
             Ações Rápidas
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <Link to="/admin/products">
               <Button className="w-full h-20 text-lg" variant="outline">
                 <Package className="h-6 w-6 mr-3" />
@@ -106,6 +106,25 @@ const AdminDashboard = () => {
               <Button className="w-full h-20 text-lg" variant="outline">
                 <ShoppingCart className="h-6 w-6 mr-3" />
                 Ver Pedidos
+              </Button>
+            </Link>
+            <Link to="/admin/coupons">
+              <Button className="w-full h-20 text-lg" variant="outline">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6 mr-3"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 8h-6a4 4 0 1 0-6 0H3" />
+                  <path d="M5 12a4 4 0 1 0 4 4" />
+                  <path d="M15 12a4 4 0 1 1 4 4" />
+                </svg>
+                Cupons
               </Button>
             </Link>
             <Button className="w-full h-20 text-lg" variant="outline">
