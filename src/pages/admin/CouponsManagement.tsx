@@ -216,22 +216,22 @@ const CouponsManagement = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6 p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Cupons de Desconto</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Cupons de Desconto</h1>
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
             Gerencie os cupons de desconto da loja
           </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-2" />
               Novo Cupom
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto">
             <form onSubmit={handleCreateCoupon}>
               <DialogHeader>
                 <DialogTitle>Criar Novo Cupom</DialogTitle>
@@ -324,32 +324,24 @@ const CouponsManagement = () => {
               </p>
             </div>
           ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Código</TableHead>
-                    <TableHead>Desconto</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Expira em</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {coupons.map((coupon) => {
-                    const expired = isExpired(coupon.expires_at);
-                    return (
-                      <TableRow key={coupon.id}>
-                        <TableCell className="font-mono font-semibold">
-                          {coupon.code}
-                        </TableCell>
-                        <TableCell>
-                          {coupon.discount_type === "percentage"
-                            ? `${coupon.discount_value}%`
-                            : `R$ ${coupon.discount_value.toFixed(2)}`}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
+            <>
+              {/* Mobile Cards */}
+              <div className="block sm:hidden space-y-4">
+                {coupons.map((coupon) => {
+                  const expired = isExpired(coupon.expires_at);
+                  return (
+                    <Card key={coupon.id}>
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1">
+                            <p className="font-mono font-semibold text-lg">{coupon.code}</p>
+                            <p className="text-foreground font-medium">
+                              {coupon.discount_type === "percentage"
+                                ? `${coupon.discount_value}%`
+                                : `R$ ${coupon.discount_value.toFixed(2)}`}
+                            </p>
+                          </div>
+                          <div>
                             {expired ? (
                               <Badge variant="destructive" className="flex items-center gap-1">
                                 <AlertCircle className="h-3 w-3" />
@@ -361,36 +353,104 @@ const CouponsManagement = () => {
                               <Badge variant="secondary">Inativo</Badge>
                             )}
                           </div>
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {format(new Date(coupon.expires_at), "dd/MM/yyyy HH:mm")}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            {!expired && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleToggleActive(coupon.id, coupon.is_active)}
-                              >
-                                {coupon.is_active ? "Desativar" : "Ativar"}
-                              </Button>
-                            )}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          Expira em: {format(new Date(coupon.expires_at), "dd/MM/yyyy HH:mm")}
+                        </div>
+                        <div className="flex gap-2 pt-2">
+                          {!expired && (
                             <Button
-                              variant="destructive"
+                              variant="outline"
                               size="sm"
-                              onClick={() => handleDeleteCoupon(coupon.id)}
+                              className="flex-1"
+                              onClick={() => handleToggleActive(coupon.id, coupon.is_active)}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              {coupon.is_active ? "Desativar" : "Ativar"}
                             </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+                          )}
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteCoupon(coupon.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+
+              {/* Desktop Table */}
+              <div className="hidden sm:block rounded-md border overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Código</TableHead>
+                      <TableHead>Desconto</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Expira em</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {coupons.map((coupon) => {
+                      const expired = isExpired(coupon.expires_at);
+                      return (
+                        <TableRow key={coupon.id}>
+                          <TableCell className="font-mono font-semibold">
+                            {coupon.code}
+                          </TableCell>
+                          <TableCell>
+                            {coupon.discount_type === "percentage"
+                              ? `${coupon.discount_value}%`
+                              : `R$ ${coupon.discount_value.toFixed(2)}`}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {expired ? (
+                                <Badge variant="destructive" className="flex items-center gap-1">
+                                  <AlertCircle className="h-3 w-3" />
+                                  Expirado
+                                </Badge>
+                              ) : coupon.is_active ? (
+                                <Badge variant="default">Ativo</Badge>
+                              ) : (
+                                <Badge variant="secondary">Inativo</Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {format(new Date(coupon.expires_at), "dd/MM/yyyy HH:mm")}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              {!expired && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleToggleActive(coupon.id, coupon.is_active)}
+                                >
+                                  {coupon.is_active ? "Desativar" : "Ativar"}
+                                </Button>
+                              )}
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleDeleteCoupon(coupon.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
