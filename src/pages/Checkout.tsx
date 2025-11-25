@@ -377,6 +377,15 @@ const Checkout = () => {
 
       if (error) throw error;
 
+      // Mostrar aviso se PIX não estiver disponível
+      if (data?.warning) {
+        toast({
+          title: "Aviso",
+          description: data.warning,
+          variant: "default",
+        });
+      }
+
       if (data?.url) {
         // Redirecionar para página de pagamento do Stripe
         window.location.href = data.url;
