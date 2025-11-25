@@ -25,6 +25,7 @@ import EmptyState from "@/components/admin/EmptyState";
 import { useAdminProducts, Product } from "@/hooks/useProducts";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { TablesInsert } from "@/integrations/supabase/types";
 
 const ProductsManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -41,7 +42,7 @@ const ProductsManagement = () => {
     product.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleAddProduct = async (data: Omit<Product, 'id' | 'created_at' | 'updated_at'>) => {
+  const handleAddProduct = async (data: TablesInsert<'products'>) => {
     try {
       const { error } = await supabase
         .from("products")
@@ -67,7 +68,7 @@ const ProductsManagement = () => {
     }
   };
 
-  const handleEditProduct = async (data: Omit<Product, 'id' | 'created_at' | 'updated_at'>) => {
+  const handleEditProduct = async (data: TablesInsert<'products'>) => {
     if (!editingProduct) return;
 
     try {

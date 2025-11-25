@@ -1,26 +1,7 @@
 import { createContext, useContext, useState, ReactNode } from "react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-
-export interface Product {
-  id: string;
-  name: string;
-  price: string;
-  price_value: number;
-  image: string;
-  images: string[];
-  video?: string;
-  category: string;
-  description?: string;
-  sizes?: string[];
-  colors?: string[];
-  stock: number;
-  is_visible: boolean;
-}
-
-export interface CartItem extends Product {
-  quantity: number;
-}
+import { Product, CartItem } from "@/types/product";
 
 interface CartContextType {
   items: CartItem[];
