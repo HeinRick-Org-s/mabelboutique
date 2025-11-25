@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Upload, Loader2, X } from "lucide-react";
 import { productSchema } from "@/lib/validations/product";
 import { toast } from "@/hooks/use-toast";
@@ -59,6 +60,8 @@ const ProductForm = ({ product, onSubmit, onCancel }: ProductFormProps) => {
     description: product?.description || "",
     sizes: product?.sizes?.join(", ") || "",
     colors: product?.colors?.join(", ") || "",
+    stock: product?.stock?.toString() || "0",
+    is_visible: product?.is_visible ?? true,
   });
 
   const parsePrice = (priceStr: string): number => {
@@ -231,6 +234,8 @@ const ProductForm = ({ product, onSubmit, onCancel }: ProductFormProps) => {
         image: uploadedImageUrls[0],
         images: uploadedImageUrls,
         video: finalVideoUrl || "",
+        stock: parseInt(formData.stock) || 0,
+        is_visible: formData.is_visible,
       };
 
       const validation = productSchema.safeParse(productData);
@@ -355,6 +360,36 @@ const ProductForm = ({ product, onSubmit, onCancel }: ProductFormProps) => {
           disabled={isSubmitting}
         />
         {errors.colors && <p className="text-sm text-destructive mt-1">{errors.colors}</p>}
+      </div>
+
+      {/* Stock */}
+      <div>
+        <Label htmlFor="stock">Estoque *</Label>
+        <Input
+          id="stock"
+          type="number"
+          min="0"
+          value={formData.stock}
+          onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+          placeholder="0"
+          className={`mt-2 ${errors.stock ? 'border-destructive' : ''}`}
+          disabled={isSubmitting}
+        />
+        {errors.stock && <p className="text-sm text-destructive mt-1">{errors.stock}</p>}
+        <p className="text-xs text-muted-foreground mt-1">Quantidade disponível em estoque</p>
+      </div>
+
+      {/* Visibility */}
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id="is_visible"
+          checked={formData.is_visible}
+          onCheckedChange={(checked) => setFormData({ ...formData, is_visible: checked as boolean })}
+          disabled={isSubmitting}
+        />
+        <Label htmlFor="is_visible" className="cursor-pointer">
+          Produto visível no site
+        </Label>
       </div>
 
       {/* Images Upload */}
