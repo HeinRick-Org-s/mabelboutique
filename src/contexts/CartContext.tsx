@@ -7,7 +7,7 @@ interface CartContextType {
   items: CartItem[];
   addToCart: (product: Product, quantity?: number) => Promise<boolean>;
   removeFromCart: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
+  updateQuantity: (productId: string, quantity: number) => Promise<void>;
   clearCart: () => void;
   totalItems: number;
   totalPrice: number;
@@ -102,16 +102,54 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
-  const updateQuantity = (productId: string, quantity: number) => {
+  const updateQuantity = async (productId: string, quantity: number) => {
     if (quantity <= 0) {
       removeFromCart(productId);
       return;
     }
-    setItems((currentItems) =>
-      currentItems.map((item) =>
-        item.id === productId ? { ...item, quantity } : item
-      )
-    );
+
+    try {
+      // Verificar estoque atual no banco
+      const { data: currentProduct, error } = await supabase
+        .from("products")
+        .select("stock")
+        .eq("id", productId)
+        .single();
+
+      if (error) throw error;
+
+      if (!currentProduct) {
+        toast({
+          title: "Produto não encontrado",
+          description: "Este produto não está mais disponível.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Verificar se há estoque suficiente
+      if (currentProduct.stock < quantity) {
+        toast({
+          title: "Estoque insuficiente",
+          description: `Apenas ${currentProduct.stock} unidade(s) disponível(is).`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setItems((currentItems) =>
+        currentItems.map((item) =>
+          item.id === productId ? { ...item, quantity } : item
+        )
+      );
+    } catch (error) {
+      console.error("Erro ao atualizar quantidade:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar a quantidade.",
+        variant: "destructive",
+      });
+    }
   };
 
   const clearCart = () => {

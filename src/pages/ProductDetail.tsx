@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ShoppingBag, ChevronLeft, Loader2, Package } from "lucide-react";
+import { ShoppingBag, ChevronLeft, Loader2, Package, Minus, Plus } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ const ProductDetail = () => {
   const { addToCart } = useCart();
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [selectedColor, setSelectedColor] = useState<string>("");
+  const [quantity, setQuantity] = useState<number>(1);
   const { data: product, isLoading } = useProduct(id || "");
 
   if (isLoading) {
@@ -68,7 +69,23 @@ const ProductDetail = () => {
       });
       return;
     }
-    await addToCart(product);
+    const success = await addToCart(product, quantity);
+    if (success) {
+      setQuantity(1);
+    }
+  };
+
+  const handleQuantityChange = (newQuantity: number) => {
+    if (newQuantity < 1) return;
+    if (newQuantity > product.stock) {
+      toast({
+        title: "Quantidade indisponível",
+        description: `Apenas ${product.stock} unidade(s) disponível(is).`,
+        variant: "destructive",
+      });
+      return;
+    }
+    setQuantity(newQuantity);
   };
 
   const productImages = product.images || [product.image];
@@ -206,6 +223,38 @@ const ProductDetail = () => {
                       {size}
                     </button>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Quantity Selector */}
+            {product.stock > 0 && (
+              <div className="mb-6">
+                <h3 className="font-playfair text-xl font-semibold text-foreground mb-4">
+                  Quantidade
+                </h3>
+                <div className="flex items-center gap-4">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-12 w-12"
+                    onClick={() => handleQuantityChange(quantity - 1)}
+                    disabled={quantity <= 1}
+                  >
+                    <Minus className="h-5 w-5" />
+                  </Button>
+                  <span className="font-inter text-2xl font-semibold w-16 text-center">
+                    {quantity}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-12 w-12"
+                    onClick={() => handleQuantityChange(quantity + 1)}
+                    disabled={quantity >= product.stock}
+                  >
+                    <Plus className="h-5 w-5" />
+                  </Button>
                 </div>
               </div>
             )}
