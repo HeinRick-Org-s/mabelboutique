@@ -12,16 +12,19 @@ serve(async (req) => {
   }
 
   try {
-    const { 
-      items, 
-      customerEmail, 
+    const {
+      items,
+      customerEmail,
       customerName,
       shippingCost,
       discountAmount,
-      orderData 
+      orderData,
+      paymentMethod,
     } = await req.json();
 
-    console.log("Creating Stripe checkout session", { items, customerEmail, shippingCost });
+    const selectedPaymentMethod = paymentMethod === "pix" ? "pix" : "card";
+
+    console.log("Creating Stripe checkout session", { items, customerEmail, shippingCost, selectedPaymentMethod });
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
@@ -61,7 +64,7 @@ serve(async (req) => {
       customer_email: customerEmail,
       line_items: lineItems,
       mode: "payment",
-      payment_method_types: ["card"],
+      payment_method_types: selectedPaymentMethod === "pix" ? ["pix"] : ["card"],
       success_url: `${req.headers.get("origin")}/order-tracking?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.get("origin")}/checkout`,
       metadata: {
