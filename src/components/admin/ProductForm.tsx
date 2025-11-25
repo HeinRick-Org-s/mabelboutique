@@ -38,12 +38,19 @@ interface ProductFormProps {
 
 const ProductForm = ({ product, onSubmit, onCancel }: ProductFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [uploadedImages, setUploadedImages] = useState<string[]>(product?.images || []);
-  const [uploadedVideo, setUploadedVideo] = useState<string>(product?.video || "");
+  
+  // Gerenciamento de imagens
+  const [existingImages, setExistingImages] = useState<string[]>(product?.images || []);
+  const [pendingImages, setPendingImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>(product?.images || []);
-  const [videoPreviews, setVideoPreviews] = useState<string>(product?.video || "");
+  const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
+  
+  // Gerenciamento de vídeo
+  const [existingVideo, setExistingVideo] = useState<string>(product?.video || "");
+  const [pendingVideo, setPendingVideo] = useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string>(product?.video || "");
+  const [videoToDelete, setVideoToDelete] = useState<string>("");
   
   const [formData, setFormData] = useState({
     name: product?.name || "",
@@ -59,11 +66,12 @@ const ProductForm = ({ product, onSubmit, onCancel }: ProductFormProps) => {
     return parseFloat(cleanPrice) || 0;
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    if (uploadedImages.length + files.length > 4) {
+    const currentTotal = existingImages.length + pendingImages.length;
+    if (currentTotal + files.length > 4) {
       toast({
         title: "Limite excedido",
         description: "Você pode adicionar no máximo 4 imagens.",
@@ -72,99 +80,61 @@ const ProductForm = ({ product, onSubmit, onCancel }: ProductFormProps) => {
       return;
     }
 
-    setIsUploading(true);
-    const newImageUrls: string[] = [];
+    const newFiles: File[] = [];
     const newPreviews: string[] = [];
 
-    try {
-      for (const file of Array.from(files)) {
-        if (uploadedImages.length + newImageUrls.length >= 4) break;
-
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
-        const filePath = `products/${fileName}`;
-
-        const { error: uploadError, data } = await supabase.storage
-          .from('product-media')
-          .upload(filePath, file);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('product-media')
-          .getPublicUrl(filePath);
-
-        newImageUrls.push(publicUrl);
-        newPreviews.push(URL.createObjectURL(file));
-      }
-
-      setUploadedImages([...uploadedImages, ...newImageUrls]);
-      setImagePreviews([...imagePreviews, ...newPreviews]);
-      
-      toast({
-        title: "Imagens enviadas",
-        description: `${newImageUrls.length} imagem(ns) enviada(s) com sucesso.`,
-      });
-    } catch (error: any) {
-      toast({
-        title: "Erro ao enviar imagens",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsUploading(false);
+    for (const file of Array.from(files)) {
+      if (currentTotal + newFiles.length >= 4) break;
+      newFiles.push(file);
+      newPreviews.push(URL.createObjectURL(file));
     }
+
+    setPendingImages([...pendingImages, ...newFiles]);
+    setImagePreviews([...imagePreviews, ...newPreviews]);
+    
+    toast({
+      title: "Imagens selecionadas",
+      description: `${newFiles.length} imagem(ns) selecionada(s). Clique em salvar para enviar.`,
+    });
   };
 
-  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setIsUploading(true);
-
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
-      const filePath = `products/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('product-media')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('product-media')
-        .getPublicUrl(filePath);
-
-      setUploadedVideo(publicUrl);
-      setVideoPreviews(URL.createObjectURL(file));
-      
-      toast({
-        title: "Vídeo enviado",
-        description: "Vídeo enviado com sucesso.",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Erro ao enviar vídeo",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsUploading(false);
-    }
+    setPendingVideo(file);
+    setVideoPreview(URL.createObjectURL(file));
+    
+    toast({
+      title: "Vídeo selecionado",
+      description: "Vídeo selecionado. Clique em salvar para enviar.",
+    });
   };
 
   const removeImage = (index: number) => {
-    const newImages = uploadedImages.filter((_, i) => i !== index);
-    const newPreviews = imagePreviews.filter((_, i) => i !== index);
-    setUploadedImages(newImages);
-    setImagePreviews(newPreviews);
+    const existingCount = existingImages.length;
+    
+    if (index < existingCount) {
+      // É uma imagem existente no storage
+      const imageUrl = existingImages[index];
+      setImagesToDelete([...imagesToDelete, imageUrl]);
+      setExistingImages(existingImages.filter((_, i) => i !== index));
+    } else {
+      // É uma imagem pendente
+      const pendingIndex = index - existingCount;
+      setPendingImages(pendingImages.filter((_, i) => i !== pendingIndex));
+    }
+    
+    setImagePreviews(imagePreviews.filter((_, i) => i !== index));
   };
 
   const removeVideo = () => {
-    setUploadedVideo("");
-    setVideoPreviews("");
+    if (existingVideo) {
+      setVideoToDelete(existingVideo);
+      setExistingVideo("");
+    }
+    setPendingVideo(null);
+    setVideoPreview("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -176,13 +146,78 @@ const ProductForm = ({ product, onSubmit, onCancel }: ProductFormProps) => {
       const sizesArray = formData.sizes.split(",").map(s => s.trim()).filter(Boolean);
       const colorsArray = formData.colors.split(",").map(c => c.trim()).filter(Boolean);
 
-      if (uploadedImages.length === 0) {
+      const totalImages = existingImages.length + pendingImages.length;
+      if (totalImages === 0) {
         toast({
           title: "Imagens obrigatórias",
           description: "Por favor, adicione pelo menos uma imagem do produto.",
           variant: "destructive",
         });
+        setIsSubmitting(false);
         return;
+      }
+
+      // 1. Deletar arquivos marcados para exclusão
+      for (const imageUrl of imagesToDelete) {
+        try {
+          const path = imageUrl.split('/product-media/')[1];
+          if (path) {
+            await supabase.storage.from('product-media').remove([path]);
+          }
+        } catch (error) {
+          console.error('Erro ao deletar imagem:', error);
+        }
+      }
+
+      if (videoToDelete) {
+        try {
+          const path = videoToDelete.split('/product-media/')[1];
+          if (path) {
+            await supabase.storage.from('product-media').remove([path]);
+          }
+        } catch (error) {
+          console.error('Erro ao deletar vídeo:', error);
+        }
+      }
+
+      // 2. Upload de novas imagens
+      const uploadedImageUrls: string[] = [...existingImages];
+      for (const file of pendingImages) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+        const filePath = `products/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('product-media')
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('product-media')
+          .getPublicUrl(filePath);
+
+        uploadedImageUrls.push(publicUrl);
+      }
+
+      // 3. Upload de novo vídeo
+      let finalVideoUrl = existingVideo;
+      if (pendingVideo) {
+        const fileExt = pendingVideo.name.split('.').pop();
+        const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+        const filePath = `products/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('product-media')
+          .upload(filePath, pendingVideo);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('product-media')
+          .getPublicUrl(filePath);
+
+        finalVideoUrl = publicUrl;
       }
 
       const productData = {
@@ -193,9 +228,9 @@ const ProductForm = ({ product, onSubmit, onCancel }: ProductFormProps) => {
         description: formData.description,
         sizes: sizesArray,
         colors: colorsArray,
-        image: uploadedImages[0],
-        images: uploadedImages,
-        video: uploadedVideo || "",
+        image: uploadedImageUrls[0],
+        images: uploadedImageUrls,
+        video: finalVideoUrl || "",
       };
 
       const validation = productSchema.safeParse(productData);
@@ -332,32 +367,28 @@ const ProductForm = ({ product, onSubmit, onCancel }: ProductFormProps) => {
             accept="image/jpeg,image/jpg,image/png,image/webp"
             multiple
             onChange={handleImageUpload}
-            disabled={isSubmitting || isUploading || uploadedImages.length >= 4}
+            disabled={isSubmitting || (existingImages.length + pendingImages.length) >= 4}
             className="hidden"
           />
           <Label
             htmlFor="images"
             className={`flex items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
-              uploadedImages.length >= 4 
+              (existingImages.length + pendingImages.length) >= 4 
                 ? 'border-muted bg-muted cursor-not-allowed' 
                 : 'border-border hover:border-primary hover:bg-muted/50'
             }`}
           >
-            {isUploading ? (
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            ) : (
-              <div className="text-center">
-                <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
-                  {uploadedImages.length >= 4 
-                    ? "Limite de 4 imagens atingido" 
-                    : "Clique para adicionar imagens"}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {uploadedImages.length}/4 imagens
-                </p>
-              </div>
-            )}
+            <div className="text-center">
+              <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                {(existingImages.length + pendingImages.length) >= 4 
+                  ? "Limite de 4 imagens atingido" 
+                  : "Clique para adicionar imagens"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {existingImages.length + pendingImages.length}/4 imagens
+              </p>
+            </div>
           </Label>
         </div>
         
@@ -400,35 +431,31 @@ const ProductForm = ({ product, onSubmit, onCancel }: ProductFormProps) => {
             type="file"
             accept="video/mp4,video/webm"
             onChange={handleVideoUpload}
-            disabled={isSubmitting || isUploading || !!uploadedVideo}
+            disabled={isSubmitting || !!(existingVideo || pendingVideo)}
             className="hidden"
           />
           <Label
             htmlFor="video"
             className={`flex items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
-              uploadedVideo 
+              (existingVideo || pendingVideo)
                 ? 'border-muted bg-muted cursor-not-allowed' 
                 : 'border-border hover:border-primary hover:bg-muted/50'
             }`}
           >
-            {isUploading ? (
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            ) : (
-              <div className="text-center">
-                <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
-                  {uploadedVideo ? "Vídeo adicionado" : "Clique para adicionar vídeo"}
-                </p>
-              </div>
-            )}
+            <div className="text-center">
+              <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                {(existingVideo || pendingVideo) ? "Vídeo adicionado" : "Clique para adicionar vídeo"}
+              </p>
+            </div>
           </Label>
         </div>
         
         {/* Video Preview */}
-        {videoPreviews && (
+        {videoPreview && (
           <div className="relative group mt-4">
             <video
-              src={videoPreviews}
+              src={videoPreview}
               controls
               className="w-full h-48 object-cover rounded-lg"
             />
