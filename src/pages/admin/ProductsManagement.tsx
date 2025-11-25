@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Plus, Search, Edit, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Search, Edit, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -19,73 +19,118 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { products } from "@/data/products";
 import { toast } from "@/hooks/use-toast";
 import ProductForm from "@/components/admin/ProductForm";
+import EmptyState from "@/components/admin/EmptyState";
+import { useProducts, Product } from "@/hooks/useProducts";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 
 const ProductsManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [productsList, setProductsList] = useState(products);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<typeof products[0] | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [productToDelete, setProductToDelete] = useState<number | null>(null);
+  const [productToDelete, setProductToDelete] = useState<string | null>(null);
 
-  const filteredProducts = productsList.filter((product) =>
+  const { data: products = [], isLoading } = useProducts();
+  const queryClient = useQueryClient();
+
+  const filteredProducts = products.filter((product) =>
     product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     product.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleAddProduct = (data: any) => {
-    // TODO: Integrar com Firebase Firestore
-    // await addDoc(collection(db, "products"), data)
-    const newProduct = {
-      id: productsList.length + 1,
-      ...data,
-      image: data.images?.[0] || "/placeholder.svg",
-    };
-    setProductsList([...productsList, newProduct]);
-    setIsFormOpen(false);
-    toast({
-      title: "Produto adicionado",
-      description: "O produto foi adicionado com sucesso.",
-    });
+  const handleAddProduct = async (data: Omit<Product, 'id' | 'created_at' | 'updated_at'>) => {
+    try {
+      const { error } = await supabase
+        .from("products")
+        .insert([data]);
+
+      if (error) throw error;
+
+      await queryClient.invalidateQueries({ queryKey: ["products"] });
+      await queryClient.invalidateQueries({ queryKey: ["featured-products"] });
+      
+      setIsFormOpen(false);
+      toast({
+        title: "Produto adicionado",
+        description: "O produto foi adicionado com sucesso.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao adicionar produto",
+        description: error.message || "Ocorreu um erro ao adicionar o produto.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleEditProduct = (data: any) => {
-    // TODO: Integrar com Firebase Firestore
-    // await updateDoc(doc(db, "products", editingProduct.id), data)
-    setProductsList(productsList.map(p => 
-      p.id === editingProduct?.id ? { ...p, ...data } : p
-    ));
-    setIsFormOpen(false);
-    setEditingProduct(null);
-    toast({
-      title: "Produto atualizado",
-      description: "As alterações foram salvas com sucesso.",
-    });
+  const handleEditProduct = async (data: Omit<Product, 'id' | 'created_at' | 'updated_at'>) => {
+    if (!editingProduct) return;
+
+    try {
+      const { error } = await supabase
+        .from("products")
+        .update(data)
+        .eq("id", editingProduct.id);
+
+      if (error) throw error;
+
+      await queryClient.invalidateQueries({ queryKey: ["products"] });
+      await queryClient.invalidateQueries({ queryKey: ["featured-products"] });
+      
+      setIsFormOpen(false);
+      setEditingProduct(null);
+      toast({
+        title: "Produto atualizado",
+        description: "As alterações foram salvas com sucesso.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao atualizar produto",
+        description: error.message || "Ocorreu um erro ao atualizar o produto.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleDeleteConfirm = () => {
-    if (productToDelete) {
-      // TODO: Integrar com Firebase Firestore
-      // await deleteDoc(doc(db, "products", productToDelete))
-      setProductsList(productsList.filter(p => p.id !== productToDelete));
+  const handleDeleteConfirm = async () => {
+    if (!productToDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from("products")
+        .delete()
+        .eq("id", productToDelete);
+
+      if (error) throw error;
+
+      await queryClient.invalidateQueries({ queryKey: ["products"] });
+      await queryClient.invalidateQueries({ queryKey: ["featured-products"] });
+      
       toast({
         title: "Produto removido",
         description: "O produto foi removido com sucesso.",
       });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao remover produto",
+        description: error.message || "Ocorreu um erro ao remover o produto.",
+        variant: "destructive",
+      });
     }
+    
     setDeleteDialogOpen(false);
     setProductToDelete(null);
   };
 
-  const openEditDialog = (product: typeof products[0]) => {
+  const openEditDialog = (product: Product) => {
     setEditingProduct(product);
     setIsFormOpen(true);
   };
 
-  const openDeleteDialog = (id: number) => {
+  const openDeleteDialog = (id: string) => {
     setProductToDelete(id);
     setDeleteDialogOpen(true);
   };
@@ -115,93 +160,104 @@ const ProductsManagement = () => {
       </header>
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Search */}
-        <div className="mb-6">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Buscar produtos..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-12"
-            />
+        {isLoading ? (
+          <div className="flex justify-center items-center min-h-[400px]">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
           </div>
-        </div>
+        ) : products.length === 0 ? (
+          <EmptyState onAddProduct={() => setIsFormOpen(true)} />
+        ) : (
+          <>
+            {/* Search */}
+            <div className="mb-6">
+              <div className="relative max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Buscar produtos..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 h-12"
+                />
+              </div>
+            </div>
 
-        {/* Products List */}
-        <div className="bg-card rounded-xl shadow-soft border border-border overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-muted/50 border-b border-border">
-                <tr>
-                  <th className="text-left py-4 px-6 font-inter font-semibold text-foreground">
-                    Imagem
-                  </th>
-                  <th className="text-left py-4 px-6 font-inter font-semibold text-foreground">
-                    Nome
-                  </th>
-                  <th className="text-left py-4 px-6 font-inter font-semibold text-foreground">
-                    Categoria
-                  </th>
-                  <th className="text-left py-4 px-6 font-inter font-semibold text-foreground">
-                    Preço
-                  </th>
-                  <th className="text-right py-4 px-6 font-inter font-semibold text-foreground">
-                    Ações
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredProducts.map((product) => (
-                  <tr key={product.id} className="border-b border-border hover:bg-muted/30">
-                    <td className="py-4 px-6">
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="w-16 h-16 object-cover rounded-lg"
-                      />
-                    </td>
-                    <td className="py-4 px-6 font-inter text-foreground">
-                      {product.name}
-                    </td>
-                    <td className="py-4 px-6 font-inter text-muted-foreground">
-                      {product.category}
-                    </td>
-                    <td className="py-4 px-6 font-inter font-semibold text-primary">
-                      {product.price}
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => openEditDialog(product)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openDeleteDialog(product.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="mt-6 p-4 bg-muted/50 rounded-lg border border-border">
-          <p className="text-sm text-muted-foreground">
-            <strong>Nota:</strong> Estrutura preparada para integração com Firebase Firestore e Storage.
-            Upload de imagens e vídeos será feito via Firebase Storage.
-          </p>
-        </div>
+            {/* Products List */}
+            {filteredProducts.length === 0 ? (
+              <div className="bg-card rounded-xl shadow-soft border border-border p-12 text-center">
+                <p className="text-muted-foreground">
+                  Nenhum produto encontrado com "{searchQuery}"
+                </p>
+              </div>
+            ) : (
+              <div className="bg-card rounded-xl shadow-soft border border-border overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-muted/50 border-b border-border">
+                      <tr>
+                        <th className="text-left py-4 px-6 font-inter font-semibold text-foreground">
+                          Imagem
+                        </th>
+                        <th className="text-left py-4 px-6 font-inter font-semibold text-foreground">
+                          Nome
+                        </th>
+                        <th className="text-left py-4 px-6 font-inter font-semibold text-foreground">
+                          Categoria
+                        </th>
+                        <th className="text-left py-4 px-6 font-inter font-semibold text-foreground">
+                          Preço
+                        </th>
+                        <th className="text-right py-4 px-6 font-inter font-semibold text-foreground">
+                          Ações
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredProducts.map((product) => (
+                        <tr key={product.id} className="border-b border-border hover:bg-muted/30">
+                          <td className="py-4 px-6">
+                            <img
+                              src={product.image}
+                              alt={product.name}
+                              className="w-16 h-16 object-cover rounded-lg"
+                            />
+                          </td>
+                          <td className="py-4 px-6 font-inter text-foreground">
+                            {product.name}
+                          </td>
+                          <td className="py-4 px-6 font-inter text-muted-foreground">
+                            {product.category}
+                          </td>
+                          <td className="py-4 px-6 font-inter font-semibold text-primary">
+                            {product.price}
+                          </td>
+                          <td className="py-4 px-6">
+                            <div className="flex items-center justify-end gap-2">
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => openEditDialog(product)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openDeleteDialog(product.id)}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       {/* Add/Edit Product Dialog */}
