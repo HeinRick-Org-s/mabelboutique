@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Search } from "lucide-react";
+import { Search, Loader2 } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Input } from "@/components/ui/input";
@@ -18,13 +18,14 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import { products } from "@/data/products";
+import { useProducts } from "@/hooks/useProducts";
 
 // Products page - no cart functionality needed here
 const Products = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const { data: products = [], isLoading } = useProducts();
 
   useEffect(() => {
     const query = searchParams.get("q");
@@ -94,9 +95,25 @@ const Products = () => {
           </Select>
         </div>
 
-        {/* Products Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-          {filteredProducts.map((product) => (
+        {/* Loading State */}
+        {isLoading ? (
+          <div className="flex justify-center items-center min-h-[400px]">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="col-span-full text-center py-16">
+            <p className="font-playfair text-2xl text-muted-foreground mb-4">
+              Nenhum produto encontrado
+            </p>
+            <p className="font-inter text-muted-foreground">
+              {searchQuery || selectedCategory !== "all" 
+                ? "Tente ajustar seus filtros de busca"
+                : "Não há produtos disponíveis no momento"}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+            {filteredProducts.map((product) => (
             <Link
               key={product.id}
               to={`/product/${product.id}`}
@@ -131,7 +148,8 @@ const Products = () => {
               </p>
             </Link>
           ))}
-        </div>
+          </div>
+        )}
       </main>
       <Footer />
     </div>

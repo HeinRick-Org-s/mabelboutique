@@ -2,18 +2,19 @@ import { Link, useNavigate } from "react-router-dom";
 import { LogOut, Package, ShoppingCart, DollarSign, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdmin } from "@/contexts/AdminContext";
-import { products } from "@/data/products";
+import { useProducts } from "@/hooks/useProducts";
 
 const AdminDashboard = () => {
   const { logout } = useAdmin();
   const navigate = useNavigate();
+  const { data: products = [] } = useProducts();
 
   const handleLogout = () => {
     logout();
     navigate("/admin/login");
   };
 
-  // Mock data - preparado para Firebase
+  // Mock data for orders and sales - will be integrated later
   const stats = {
     totalProducts: products.length,
     pendingOrders: 12,
