@@ -1,44 +1,147 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { User } from "@supabase/supabase-js";
 
 interface AdminContextType {
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  user: User | null;
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
 }
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
+const INACTIVITY_TIMEOUT = 60 * 60 * 1000; // 1 hora em milissegundos
+
 export const AdminProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [inactivityTimer, setInactivityTimer] = useState<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    // Check if admin is already logged in (mockado - preparado para Firebase)
-    const adminSession = sessionStorage.getItem("adminAuth");
-    if (adminSession === "true") {
-      setIsAuthenticated(true);
+  const resetInactivityTimer = () => {
+    if (inactivityTimer) {
+      clearTimeout(inactivityTimer);
     }
-  }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    // Mock login - preparado para integração com Firebase Auth
-    // TODO: Integrar com Firebase: signInWithEmailAndPassword(auth, email, password)
-    
-    if (email === "admin@mabel.com" && password === "admin123") {
-      setIsAuthenticated(true);
-      sessionStorage.setItem("adminAuth", "true");
-      return true;
-    }
-    return false;
+    const timer = setTimeout(async () => {
+      await logout();
+    }, INACTIVITY_TIMEOUT);
+
+    setInactivityTimer(timer);
   };
 
-  const logout = () => {
-    // TODO: Integrar com Firebase: signOut(auth)
+  const checkAdminRole = async (userId: string): Promise<boolean> => {
+    const { data, error } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .single();
+
+    if (error || !data) {
+      return false;
+    }
+
+    return true;
+  };
+
+  useEffect(() => {
+    // Configurar listener de autenticação
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          const isAdmin = await checkAdminRole(session.user.id);
+          setIsAuthenticated(isAdmin);
+          setUser(isAdmin ? session.user : null);
+          if (isAdmin) {
+            resetInactivityTimer();
+          }
+        } else {
+          setIsAuthenticated(false);
+          setUser(null);
+          if (inactivityTimer) {
+            clearTimeout(inactivityTimer);
+          }
+        }
+        setIsLoading(false);
+      }
+    );
+
+    // Verificar sessão existente
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        const isAdmin = await checkAdminRole(session.user.id);
+        setIsAuthenticated(isAdmin);
+        setUser(isAdmin ? session.user : null);
+        if (isAdmin) {
+          resetInactivityTimer();
+        }
+      }
+      setIsLoading(false);
+    });
+
+    // Listener de atividade do usuário
+    const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart'];
+    const handleActivity = () => {
+      if (isAuthenticated) {
+        resetInactivityTimer();
+      }
+    };
+
+    activityEvents.forEach(event => {
+      window.addEventListener(event, handleActivity);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+      if (inactivityTimer) {
+        clearTimeout(inactivityTimer);
+      }
+      activityEvents.forEach(event => {
+        window.removeEventListener(event, handleActivity);
+      });
+    };
+  }, [isAuthenticated]);
+
+  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      if (data.user) {
+        const isAdmin = await checkAdminRole(data.user.id);
+        if (!isAdmin) {
+          await supabase.auth.signOut();
+          return { success: false, error: "Usuário não tem permissões de administrador" };
+        }
+        return { success: true };
+      }
+
+      return { success: false, error: "Erro ao fazer login" };
+    } catch (error) {
+      return { success: false, error: "Erro inesperado ao fazer login" };
+    }
+  };
+
+  const logout = async () => {
+    if (inactivityTimer) {
+      clearTimeout(inactivityTimer);
+    }
+    await supabase.auth.signOut();
     setIsAuthenticated(false);
-    sessionStorage.removeItem("adminAuth");
+    setUser(null);
   };
 
   return (
-    <AdminContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AdminContext.Provider value={{ isAuthenticated, user, isLoading, login, logout }}>
       {children}
     </AdminContext.Provider>
   );

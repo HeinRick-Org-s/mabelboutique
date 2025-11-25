@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,16 +10,22 @@ const AdminLogin = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAdmin();
+  const { login, isAuthenticated } = useAdmin();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/admin/dashboard");
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const success = await login(email, password);
-      if (success) {
+      const result = await login(email, password);
+      if (result.success) {
         toast({
           title: "Login realizado com sucesso!",
           description: "Bem-vinda ao painel administrativo.",
@@ -28,7 +34,7 @@ const AdminLogin = () => {
       } else {
         toast({
           title: "Erro ao fazer login",
-          description: "Email ou senha incorretos.",
+          description: result.error || "Email ou senha incorretos.",
           variant: "destructive",
         });
       }
@@ -93,10 +99,7 @@ const AdminLogin = () => {
           </form>
 
           <div className="mt-6 text-center text-sm text-muted-foreground">
-            <p>Credenciais de teste:</p>
-            <p className="font-mono text-xs mt-1">
-              admin@mabel.com / admin123
-            </p>
+            <p>Use suas credenciais de administrador</p>
           </div>
         </div>
       </div>
