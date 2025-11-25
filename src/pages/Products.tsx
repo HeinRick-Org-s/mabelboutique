@@ -128,14 +128,8 @@ const Products = () => {
                           />
                         </CarouselItem>
                       ))}
-                    </CarouselContent>
-                    {(product.images?.length || 0) > 1 && (
-                      <>
-                        <CarouselPrevious className="left-2" onClick={(e) => e.preventDefault()} />
-                        <CarouselNext className="right-2" onClick={(e) => e.preventDefault()} />
-                      </>
-                    )}
-                  </Carousel>
+                  </CarouselContent>
+                </Carousel>
                 </div>
                 <h3 className="font-playfair text-xl font-semibold text-foreground mb-2">
                   {product.name}

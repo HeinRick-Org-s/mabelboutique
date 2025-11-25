@@ -104,12 +104,6 @@ const ProductDetail = () => {
                     </CarouselItem>
                   ))}
                 </CarouselContent>
-                {productImages.length > 1 && (
-                  <>
-                    <CarouselPrevious className="left-4" />
-                    <CarouselNext className="right-4" />
-                  </>
-                )}
               </Carousel>
             </div>
 
