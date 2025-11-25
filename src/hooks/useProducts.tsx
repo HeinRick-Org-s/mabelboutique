@@ -17,6 +17,7 @@ export const useProducts = () => {
       if (error) throw error;
       return (data || []) as Product[];
     },
+    staleTime: 1000 * 60 * 5, // Cache por 5 minutos
   });
 };
 
