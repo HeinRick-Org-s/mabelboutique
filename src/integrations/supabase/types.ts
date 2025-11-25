@@ -110,7 +110,9 @@ export type Database = {
           discount_amount: number
           id: string
           order_number: string
+          payment_intent_id: string | null
           payment_method: string
+          payment_status: string | null
           shipping_cep: string
           shipping_city: string
           shipping_complement: string | null
@@ -122,6 +124,7 @@ export type Database = {
           status: string
           subtotal: number
           total: number
+          tracking_code: string | null
           updated_at: string
         }
         Insert: {
@@ -136,7 +139,9 @@ export type Database = {
           discount_amount?: number
           id?: string
           order_number: string
+          payment_intent_id?: string | null
           payment_method: string
+          payment_status?: string | null
           shipping_cep: string
           shipping_city: string
           shipping_complement?: string | null
@@ -148,6 +153,7 @@ export type Database = {
           status?: string
           subtotal: number
           total: number
+          tracking_code?: string | null
           updated_at?: string
         }
         Update: {
@@ -162,7 +168,9 @@ export type Database = {
           discount_amount?: number
           id?: string
           order_number?: string
+          payment_intent_id?: string | null
           payment_method?: string
+          payment_status?: string | null
           shipping_cep?: string
           shipping_city?: string
           shipping_complement?: string | null
@@ -174,6 +182,7 @@ export type Database = {
           status?: string
           subtotal?: number
           total?: number
+          tracking_code?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -295,6 +304,7 @@ export type Database = {
     }
     Functions: {
       generate_order_number: { Args: never; Returns: string }
+      generate_tracking_code: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
