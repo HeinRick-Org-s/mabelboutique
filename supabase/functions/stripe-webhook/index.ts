@@ -28,127 +28,116 @@ serve(async (req) => {
       
       console.log("Processing completed checkout session:", session.id);
 
-      // Recuperar dados do pedido dos metadados
-      const orderData = JSON.parse(session.metadata?.orderData || "{}");
-      const paymentIntentId = session.payment_intent as string;
+      const metadata = session.metadata;
+      const orderId = metadata?.order_id;
+      const orderNumber = metadata?.order_number;
+
+      if (!orderId) {
+        console.error("No order_id in metadata");
+        throw new Error("Missing order_id in session metadata");
+      }
+
+      console.log("Processing payment for order:", orderId);
 
       // Criar cliente Supabase
       const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-      // Criar pedido no banco de dados
+      // Buscar pedido existente
       const { data: order, error: orderError } = await supabase
         .from("orders")
-        .insert({
-          customer_name: session.metadata?.customerName || "",
-          customer_email: session.customer_email || session.customer_details?.email || "",
-          customer_phone: orderData.customer_phone || "",
-          customer_whatsapp: orderData.customer_whatsapp || "",
-          shipping_cep: orderData.shipping_cep || "",
-          shipping_street: orderData.shipping_street || "",
-          shipping_number: orderData.shipping_number || "",
-          shipping_complement: orderData.shipping_complement || "",
-          shipping_neighborhood: orderData.shipping_neighborhood || "",
-          shipping_city: orderData.shipping_city || "",
-          shipping_state: orderData.shipping_state || "",
-          delivery_type: orderData.delivery_type || "",
-          delivery_days: orderData.delivery_days || null,
-          payment_method: "credit-card",
-          payment_intent_id: paymentIntentId,
-          payment_status: "paid",
-          subtotal: orderData.subtotal || 0,
-          shipping_cost: orderData.shipping_cost || 0,
-          discount_amount: parseFloat(session.metadata?.discountAmount || "0"),
-          total: (session.amount_total || 0) / 100,
-          order_number: "",
-          coupon_code: orderData.coupon_code || null,
-          status: "pending",
-        })
-        .select()
+        .select("*")
+        .eq("id", orderId)
         .single();
 
-      if (orderError) {
-        console.error("Error creating order:", orderError);
-        throw orderError;
+      if (orderError || !order) {
+        console.error("Order not found:", orderError);
+        throw new Error("Order not found in database");
       }
 
-      console.log("Order created:", order.id);
+      // Gerar código de rastreamento
+      const { data: trackingCodeData } = await supabase.rpc("generate_tracking_code");
+      const trackingCode = trackingCodeData || `TRK-${Date.now()}`;
 
-      // Criar itens do pedido
-      const orderItems = orderData.items?.map((item: any) => ({
-        order_id: order.id,
-        product_id: item.productId,
-        product_name: item.name,
-        product_image: item.image,
-        product_price: item.price,
-        quantity: item.quantity,
-        selected_color: item.selectedColor,
-        selected_size: item.selectedSize,
-        subtotal: item.price * item.quantity,
-      })) || [];
+      console.log("Generated tracking code:", trackingCode);
 
-      if (orderItems.length > 0) {
-        const { error: itemsError } = await supabase
-          .from("order_items")
-          .insert(orderItems);
+      // Atualizar pedido para "paid" e "processing"
+      const { error: updateError } = await supabase
+        .from("orders")
+        .update({
+          payment_intent_id: session.payment_intent as string,
+          payment_status: "paid",
+          status: "processing",
+          tracking_code: trackingCode,
+        })
+        .eq("id", orderId);
 
-        if (itemsError) {
-          console.error("Error creating order items:", itemsError);
-          throw itemsError;
-        }
+      if (updateError) {
+        console.error("Error updating order:", updateError);
+        throw updateError;
       }
+
+      console.log("Order updated to paid/processing");
+
+      // Buscar itens do pedido
+      const { data: orderItems, error: itemsError } = await supabase
+        .from("order_items")
+        .select("*")
+        .eq("order_id", orderId);
+
+      if (itemsError) {
+        console.error("Error fetching order items:", itemsError);
+        throw itemsError;
+      }
+
+      console.log("Order items fetched:", orderItems?.length);
 
       // Decrementar estoque dos produtos
-      for (const item of orderData.items || []) {
+      for (const item of orderItems || []) {
         const { data: product } = await supabase
           .from("products")
           .select("variants")
-          .eq("id", item.productId)
+          .eq("id", item.product_id)
           .single();
 
         if (product?.variants) {
-          const variants = product.variants as any[];
-          const updatedVariants = variants.map((colorVariant: any) => {
-            if (colorVariant.color === item.selectedColor) {
+          const variants = (product.variants as any[]) || [];
+          const updatedVariants = variants.map((variant: any) => {
+            if (
+              variant.color === item.selected_color &&
+              variant.size === item.selected_size
+            ) {
               return {
-                ...colorVariant,
-                sizes: colorVariant.sizes.map((sizeVariant: any) => {
-                  if (sizeVariant.size === item.selectedSize) {
-                    return {
-                      ...sizeVariant,
-                      stock: Math.max(0, sizeVariant.stock - item.quantity),
-                    };
-                  }
-                  return sizeVariant;
-                }),
+                ...variant,
+                stock: Math.max(0, variant.stock - item.quantity),
               };
             }
-            return colorVariant;
+            return variant;
           });
 
           await supabase
             .from("products")
             .update({ variants: updatedVariants })
-            .eq("id", item.productId);
+            .eq("id", item.product_id);
         }
       }
 
-      // Enviar email com código de rastreamento
-      try {
-        await fetch(`${supabaseUrl}/functions/v1/send-order-email`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${supabaseServiceKey}`,
-          },
-          body: JSON.stringify({
-            orderId: order.id,
-            customerEmail: order.customer_email,
-            trackingCode: order.tracking_code,
-          }),
-        });
-        console.log("Order email sent successfully");
-      } catch (emailError) {
-        console.error("Error sending order email:", emailError);
+      console.log("Stock updated");
+
+      // Enviar email de confirmação
+      const emailResponse = await supabase.functions.invoke("send-order-email", {
+        body: {
+          orderId: order.id,
+          orderNumber: orderNumber,
+          trackingCode: trackingCode,
+          customerEmail: order.customer_email,
+          customerName: order.customer_name,
+        },
+      });
+
+      if (emailResponse.error) {
+        console.error("Error sending email:", emailResponse.error);
+      } else {
+        console.log("Order confirmation email sent");
       }
     }
 

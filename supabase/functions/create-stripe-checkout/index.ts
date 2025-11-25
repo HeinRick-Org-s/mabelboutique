@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,6 +26,77 @@ serve(async (req) => {
     const selectedPaymentMethod = paymentMethod === "pix" ? "pix" : "card";
 
     console.log("Creating Stripe checkout session", { items, customerEmail, shippingCost, selectedPaymentMethod });
+
+    // Criar cliente Supabase
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
+    // Gerar número único do pedido
+    const { data: orderNumberData } = await supabase.rpc("generate_order_number");
+    const orderNumber = orderNumberData || `ORD-${Date.now()}`;
+
+    // Criar pedido no Supabase com status "pending"
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .insert({
+        order_number: orderNumber,
+        customer_name: customerName,
+        customer_email: customerEmail,
+        customer_phone: orderData.customer_phone,
+        customer_whatsapp: orderData.customer_whatsapp,
+        shipping_cep: orderData.shipping_cep || "",
+        shipping_street: orderData.shipping_street,
+        shipping_number: orderData.shipping_number || "",
+        shipping_complement: orderData.shipping_complement,
+        shipping_neighborhood: orderData.shipping_neighborhood || "",
+        shipping_city: orderData.shipping_city || "",
+        shipping_state: orderData.shipping_state || "",
+        delivery_type: orderData.delivery_type,
+        delivery_days: orderData.delivery_days,
+        payment_method: selectedPaymentMethod,
+        payment_status: "pending",
+        status: "pending",
+        subtotal: orderData.subtotal,
+        shipping_cost: shippingCost,
+        discount_amount: discountAmount,
+        total: orderData.subtotal - discountAmount + shippingCost,
+        coupon_code: orderData.coupon_code,
+      })
+      .select()
+      .single();
+
+    if (orderError || !order) {
+      console.error("Erro ao criar pedido:", orderError);
+      throw new Error("Falha ao criar pedido no banco de dados");
+    }
+
+    console.log("Pedido criado no Supabase:", order.id);
+
+    // Criar itens do pedido
+    const orderItems = orderData.items.map((item: any) => ({
+      order_id: order.id,
+      product_id: item.productId,
+      product_name: item.name,
+      product_image: item.image,
+      product_price: item.price,
+      quantity: item.quantity,
+      selected_color: item.selectedColor,
+      selected_size: item.selectedSize,
+      subtotal: item.price * item.quantity,
+    }));
+
+    const { error: itemsError } = await supabase
+      .from("order_items")
+      .insert(orderItems);
+
+    if (itemsError) {
+      console.error("Erro ao criar itens do pedido:", itemsError);
+      throw new Error("Falha ao criar itens do pedido");
+    }
+
+    console.log("Itens do pedido criados com sucesso");
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
@@ -65,12 +137,11 @@ serve(async (req) => {
       line_items: lineItems,
       mode: "payment",
       payment_method_types: selectedPaymentMethod === "pix" ? ["pix"] : ["card"],
-      success_url: `${req.headers.get("origin")}/order-tracking?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${req.headers.get("origin")}/order-tracking?code=${order.id}`,
       cancel_url: `${req.headers.get("origin")}/checkout`,
       metadata: {
-        customerName,
-        orderData: JSON.stringify(orderData),
-        discountAmount: discountAmount.toString(),
+        order_id: order.id,
+        order_number: orderNumber,
       },
       // Aplicar desconto se houver
       ...(discountAmount > 0 && {
@@ -82,10 +153,17 @@ serve(async (req) => {
 
     console.log("Stripe session created:", session.id);
 
+    // Atualizar pedido com payment_intent_id
+    await supabase
+      .from("orders")
+      .update({ payment_intent_id: session.id })
+      .eq("id", order.id);
+
     return new Response(
       JSON.stringify({ 
         sessionId: session.id,
-        url: session.url 
+        url: session.url,
+        orderId: order.id,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
