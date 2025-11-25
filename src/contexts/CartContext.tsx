@@ -8,9 +8,11 @@ export interface Product {
   priceValue: number;
   image: string;
   images?: string[];
+  video?: string;
   category: string;
   description?: string;
   sizes?: string[];
+  colors?: string[];
 }
 
 export interface CartItem extends Product {

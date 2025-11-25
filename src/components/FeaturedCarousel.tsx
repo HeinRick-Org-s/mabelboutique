@@ -1,7 +1,5 @@
 import { Link } from "react-router-dom";
 import Autoplay from "embla-carousel-autoplay";
-import { ShoppingBag } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
   Carousel,
   CarouselContent,
@@ -10,10 +8,8 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import { featuredProducts } from "@/data/products";
-import { useCart } from "@/contexts/CartContext";
 
 export const FeaturedCarousel = () => {
-  const { addToCart } = useCart();
 
   return (
     <section className="py-16 sm:py-20 lg:py-24 bg-background">
@@ -51,27 +47,13 @@ export const FeaturedCarousel = () => {
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                       />
                       <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/10 transition-colors duration-500" />
-                      
-                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                        <Button 
-                          size="sm" 
-                          className="bg-background text-foreground hover:bg-primary hover:text-primary-foreground shadow-medium"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            addToCart(product);
-                          }}
-                        >
-                          <ShoppingBag className="h-4 w-4 mr-2" />
-                          Adicionar
-                        </Button>
-                      </div>
                     </div>
 
                     <div className="p-4 sm:p-6">
                       <h3 className="font-playfair text-lg sm:text-xl font-semibold text-foreground mb-2">
                         {product.name}
                       </h3>
-                      <p className="font-inter text-base sm:text-lg font-medium text-primary">
+                      <p className="font-inter text-xl font-bold text-primary">
                         {product.price}
                       </p>
                     </div>

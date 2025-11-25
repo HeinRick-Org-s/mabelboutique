@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { ShoppingBag } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { Search } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -11,90 +11,123 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 import { products } from "@/data/products";
-import { useCart } from "@/contexts/CartContext";
 
 const Products = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const { addToCart } = useCart();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    const query = searchParams.get("q");
+    if (query) {
+      setSearchQuery(query);
+    }
+  }, [searchParams]);
 
   const categories = ["all", ...Array.from(new Set(products.map((p) => p.category)))];
 
-  const filteredProducts =
-    selectedCategory === "all"
-      ? products
-      : products.filter((p) => p.category === selectedCategory);
+  const filteredProducts = products.filter((product) => {
+    const matchesCategory = selectedCategory === "all" || product.category === selectedCategory;
+    const matchesSearch = searchQuery === "" || 
+      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.category.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
+  const handleSearch = (value: string) => {
+    setSearchQuery(value);
+    if (value) {
+      setSearchParams({ q: value });
+    } else {
+      setSearchParams({});
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        <div className="mb-8 sm:mb-12">
-          <h1 className="font-playfair text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-4">
-            Nossa Coleção
-          </h1>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <p className="font-inter text-muted-foreground">
-              {filteredProducts.length} produto{filteredProducts.length !== 1 ? "s" : ""}
-            </p>
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="w-full sm:w-[200px]">
-                <SelectValue placeholder="Todas as Categorias" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as Categorias</SelectItem>
-                {categories.slice(1).map((cat) => (
-                  <SelectItem key={cat} value={cat}>
-                    {cat}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+        <h1 className="font-playfair text-4xl sm:text-5xl font-bold text-foreground mb-8 text-center">
+          Nossa Coleção
+        </h1>
+
+        {/* Search Bar */}
+        <div className="max-w-2xl mx-auto mb-8">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Buscar produtos..."
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              className="pl-10 h-12 text-base"
+            />
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8">
-          {filteredProducts.map((product, index) => (
+        {/* Filter and Results Count */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+          <p className="font-inter text-muted-foreground">
+            {filteredProducts.length} produto{filteredProducts.length !== 1 ? "s" : ""}
+          </p>
+          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="Todas as Categorias" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as Categorias</SelectItem>
+              {categories.slice(1).map((cat) => (
+                <SelectItem key={cat} value={cat}>
+                  {cat}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Products Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+          {filteredProducts.map((product) => (
             <Link
               key={product.id}
               to={`/product/${product.id}`}
-              className="group bg-card rounded-lg overflow-hidden shadow-soft hover:shadow-hover transition-all duration-500 animate-scale-in block"
-              style={{ animationDelay: `${index * 50}ms` }}
+              className="group"
             >
-              <div className="relative aspect-square overflow-hidden bg-muted">
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                />
-                <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/10 transition-colors duration-500" />
-                
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                  <Button 
-                    size="sm" 
-                    className="bg-background text-foreground hover:bg-primary hover:text-primary-foreground shadow-medium"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      addToCart(product);
-                    }}
-                  >
-                    <ShoppingBag className="h-4 w-4 mr-2" />
-                    Adicionar
-                  </Button>
-                </div>
+              <div className="relative overflow-hidden rounded-lg bg-muted mb-4 aspect-square">
+                <Carousel className="w-full h-full">
+                  <CarouselContent>
+                    {(product.images || [product.image]).map((img, index) => (
+                      <CarouselItem key={index}>
+                        <img
+                          src={img}
+                          alt={`${product.name} - ${index + 1}`}
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                  {(product.images?.length || 0) > 1 && (
+                    <>
+                      <CarouselPrevious className="left-2" />
+                      <CarouselNext className="right-2" />
+                    </>
+                  )}
+                </Carousel>
               </div>
-
-              <div className="p-4 sm:p-6">
-                <p className="text-xs font-inter text-muted-foreground mb-1">
-                  {product.category}
-                </p>
-                <h3 className="font-playfair text-lg sm:text-xl font-semibold text-foreground mb-2">
-                  {product.name}
-                </h3>
-                <p className="font-inter text-base sm:text-lg font-medium text-primary">
-                  {product.price}
-                </p>
-              </div>
+              <h3 className="font-playfair text-xl font-semibold text-foreground mb-2">
+                {product.name}
+              </h3>
+              <p className="font-inter text-xl font-bold text-primary">
+                {product.price}
+              </p>
             </Link>
           ))}
         </div>

@@ -1,12 +1,12 @@
-import { Menu, User } from "lucide-react";
+import { Menu, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { SearchDialog } from "./SearchDialog";
+import { Link, useNavigate } from "react-router-dom";
 import { CartSheet } from "./CartSheet";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <header className="sticky top-0 z-50 w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border">
@@ -34,9 +34,13 @@ const Header = () => {
 
           {/* Actions */}
           <div className="flex items-center space-x-2 sm:space-x-4">
-            <SearchDialog />
-            <Button variant="ghost" size="icon" className="hover:bg-accent hidden sm:flex">
-              <User className="h-5 w-5" />
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => navigate('/products')}
+              className="hover:bg-accent"
+            >
+              <Search className="h-5 w-5" />
             </Button>
             <CartSheet />
             <Button 
