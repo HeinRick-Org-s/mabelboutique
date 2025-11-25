@@ -10,10 +10,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Upload, Loader2 } from "lucide-react";
+import { Upload, Loader2, X } from "lucide-react";
 import { productSchema } from "@/lib/validations/product";
 import { toast } from "@/hooks/use-toast";
 import { Product } from "@/hooks/useProducts";
+import { supabase } from "@/integrations/supabase/client";
 
 const categories = [
   "Vestidos",
@@ -37,7 +38,12 @@ interface ProductFormProps {
 
 const ProductForm = ({ product, onSubmit, onCancel }: ProductFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [uploadedImages, setUploadedImages] = useState<string[]>(product?.images || []);
+  const [uploadedVideo, setUploadedVideo] = useState<string>(product?.video || "");
+  const [imagePreviews, setImagePreviews] = useState<string[]>(product?.images || []);
+  const [videoPreviews, setVideoPreviews] = useState<string>(product?.video || "");
   
   const [formData, setFormData] = useState({
     name: product?.name || "",
@@ -46,14 +52,119 @@ const ProductForm = ({ product, onSubmit, onCancel }: ProductFormProps) => {
     description: product?.description || "",
     sizes: product?.sizes?.join(", ") || "",
     colors: product?.colors?.join(", ") || "",
-    imageUrl: product?.image || "",
-    imageUrls: product?.images?.join(", ") || "",
-    videoUrl: product?.video || "",
   });
 
   const parsePrice = (priceStr: string): number => {
     const cleanPrice = priceStr.replace(/[R$\s.]/g, "").replace(",", ".");
     return parseFloat(cleanPrice) || 0;
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    if (uploadedImages.length + files.length > 4) {
+      toast({
+        title: "Limite excedido",
+        description: "Você pode adicionar no máximo 4 imagens.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    const newImageUrls: string[] = [];
+    const newPreviews: string[] = [];
+
+    try {
+      for (const file of Array.from(files)) {
+        if (uploadedImages.length + newImageUrls.length >= 4) break;
+
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+        const filePath = `products/${fileName}`;
+
+        const { error: uploadError, data } = await supabase.storage
+          .from('product-media')
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('product-media')
+          .getPublicUrl(filePath);
+
+        newImageUrls.push(publicUrl);
+        newPreviews.push(URL.createObjectURL(file));
+      }
+
+      setUploadedImages([...uploadedImages, ...newImageUrls]);
+      setImagePreviews([...imagePreviews, ...newPreviews]);
+      
+      toast({
+        title: "Imagens enviadas",
+        description: `${newImageUrls.length} imagem(ns) enviada(s) com sucesso.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao enviar imagens",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+      const filePath = `products/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('product-media')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('product-media')
+        .getPublicUrl(filePath);
+
+      setUploadedVideo(publicUrl);
+      setVideoPreviews(URL.createObjectURL(file));
+      
+      toast({
+        title: "Vídeo enviado",
+        description: "Vídeo enviado com sucesso.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao enviar vídeo",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const removeImage = (index: number) => {
+    const newImages = uploadedImages.filter((_, i) => i !== index);
+    const newPreviews = imagePreviews.filter((_, i) => i !== index);
+    setUploadedImages(newImages);
+    setImagePreviews(newPreviews);
+  };
+
+  const removeVideo = () => {
+    setUploadedVideo("");
+    setVideoPreviews("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -64,7 +175,15 @@ const ProductForm = ({ product, onSubmit, onCancel }: ProductFormProps) => {
     try {
       const sizesArray = formData.sizes.split(",").map(s => s.trim()).filter(Boolean);
       const colorsArray = formData.colors.split(",").map(c => c.trim()).filter(Boolean);
-      const imagesArray = formData.imageUrls.split(",").map(u => u.trim()).filter(Boolean);
+
+      if (uploadedImages.length === 0) {
+        toast({
+          title: "Imagens obrigatórias",
+          description: "Por favor, adicione pelo menos uma imagem do produto.",
+          variant: "destructive",
+        });
+        return;
+      }
 
       const productData = {
         name: formData.name,
@@ -74,9 +193,9 @@ const ProductForm = ({ product, onSubmit, onCancel }: ProductFormProps) => {
         description: formData.description,
         sizes: sizesArray,
         colors: colorsArray,
-        image: formData.imageUrl || imagesArray[0] || "",
-        images: imagesArray.length > 0 ? imagesArray : [formData.imageUrl],
-        video: formData.videoUrl || "",
+        image: uploadedImages[0],
+        images: uploadedImages,
+        video: uploadedVideo || "",
       };
 
       const validation = productSchema.safeParse(productData);
@@ -203,49 +322,126 @@ const ProductForm = ({ product, onSubmit, onCancel }: ProductFormProps) => {
         {errors.colors && <p className="text-sm text-destructive mt-1">{errors.colors}</p>}
       </div>
 
-      {/* Image URL */}
+      {/* Images Upload */}
       <div>
-        <Label htmlFor="imageUrl">URL da Imagem Principal *</Label>
-        <Input
-          id="imageUrl"
-          value={formData.imageUrl}
-          onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-          placeholder="https://exemplo.com/imagem.jpg"
-          className={`mt-2 ${errors.image ? 'border-destructive' : ''}`}
-          disabled={isSubmitting}
-        />
-        {errors.image && <p className="text-sm text-destructive mt-1">{errors.image}</p>}
-      </div>
-
-      {/* Images URLs */}
-      <div>
-        <Label htmlFor="imageUrls">URLs das Imagens * (separadas por vírgula)</Label>
-        <Textarea
-          id="imageUrls"
-          value={formData.imageUrls}
-          onChange={(e) => setFormData({ ...formData, imageUrls: e.target.value })}
-          placeholder="https://exemplo.com/img1.jpg, https://exemplo.com/img2.jpg"
-          rows={3}
-          className={`mt-2 ${errors.images ? 'border-destructive' : ''}`}
-          disabled={isSubmitting}
-        />
+        <Label htmlFor="images">Imagens do Produto * (máximo 4)</Label>
+        <div className="mt-2">
+          <Input
+            id="images"
+            type="file"
+            accept="image/jpeg,image/jpg,image/png,image/webp"
+            multiple
+            onChange={handleImageUpload}
+            disabled={isSubmitting || isUploading || uploadedImages.length >= 4}
+            className="hidden"
+          />
+          <Label
+            htmlFor="images"
+            className={`flex items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+              uploadedImages.length >= 4 
+                ? 'border-muted bg-muted cursor-not-allowed' 
+                : 'border-border hover:border-primary hover:bg-muted/50'
+            }`}
+          >
+            {isUploading ? (
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            ) : (
+              <div className="text-center">
+                <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  {uploadedImages.length >= 4 
+                    ? "Limite de 4 imagens atingido" 
+                    : "Clique para adicionar imagens"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {uploadedImages.length}/4 imagens
+                </p>
+              </div>
+            )}
+          </Label>
+        </div>
+        
+        {/* Image Previews */}
+        {imagePreviews.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
+            {imagePreviews.map((preview, index) => (
+              <div key={index} className="relative group">
+                <img
+                  src={preview}
+                  alt={`Preview ${index + 1}`}
+                  className="w-full h-32 object-cover rounded-lg"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeImage(index)}
+                  className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  disabled={isSubmitting}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+                {index === 0 && (
+                  <div className="absolute bottom-2 left-2 bg-primary text-primary-foreground text-xs px-2 py-1 rounded">
+                    Principal
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
         {errors.images && <p className="text-sm text-destructive mt-1">{errors.images}</p>}
-        <p className="text-xs text-muted-foreground mt-1">
-          Adicione pelo menos uma URL de imagem
-        </p>
       </div>
 
-      {/* Video URL */}
+      {/* Video Upload */}
       <div>
-        <Label htmlFor="videoUrl">URL do Vídeo (Opcional)</Label>
-        <Input
-          id="videoUrl"
-          value={formData.videoUrl}
-          onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
-          placeholder="https://exemplo.com/video.mp4"
-          className={`mt-2 ${errors.video ? 'border-destructive' : ''}`}
-          disabled={isSubmitting}
-        />
+        <Label htmlFor="video">Vídeo do Produto (Opcional)</Label>
+        <div className="mt-2">
+          <Input
+            id="video"
+            type="file"
+            accept="video/mp4,video/webm"
+            onChange={handleVideoUpload}
+            disabled={isSubmitting || isUploading || !!uploadedVideo}
+            className="hidden"
+          />
+          <Label
+            htmlFor="video"
+            className={`flex items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+              uploadedVideo 
+                ? 'border-muted bg-muted cursor-not-allowed' 
+                : 'border-border hover:border-primary hover:bg-muted/50'
+            }`}
+          >
+            {isUploading ? (
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            ) : (
+              <div className="text-center">
+                <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  {uploadedVideo ? "Vídeo adicionado" : "Clique para adicionar vídeo"}
+                </p>
+              </div>
+            )}
+          </Label>
+        </div>
+        
+        {/* Video Preview */}
+        {videoPreviews && (
+          <div className="relative group mt-4">
+            <video
+              src={videoPreviews}
+              controls
+              className="w-full h-48 object-cover rounded-lg"
+            />
+            <button
+              type="button"
+              onClick={removeVideo}
+              className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+              disabled={isSubmitting}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
         {errors.video && <p className="text-sm text-destructive mt-1">{errors.video}</p>}
       </div>
 
