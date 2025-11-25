@@ -1,23 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { Product } from "@/types/product";
 
-export interface Product {
-  id: string;
-  name: string;
-  price: string;
-  price_value: number;
-  image: string;
-  images: string[];
-  video?: string;
-  category: string;
-  description?: string;
-  sizes?: string[];
-  colors?: string[];
-  stock: number;
-  is_visible: boolean;
-  created_at?: string;
-  updated_at?: string;
-}
+export type { Product } from "@/types/product";
 
 export const useProducts = () => {
   return useQuery({

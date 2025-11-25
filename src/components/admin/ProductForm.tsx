@@ -14,7 +14,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Upload, Loader2, X } from "lucide-react";
 import { productSchema } from "@/lib/validations/product";
 import { toast } from "@/hooks/use-toast";
-import { Product } from "@/hooks/useProducts";
+import { Product } from "@/types/product";
+import { TablesInsert } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
 
 const categories = [
@@ -33,7 +34,7 @@ const categories = [
 
 interface ProductFormProps {
   product?: Product;
-  onSubmit: (data: Omit<Product, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  onSubmit: (data: TablesInsert<'products'>) => Promise<void>;
   onCancel: () => void;
 }
 
