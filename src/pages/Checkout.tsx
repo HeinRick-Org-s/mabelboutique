@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { ChevronLeft, CreditCard, Truck } from "lucide-react";
+import { ChevronLeft, CreditCard, Truck, Tag, Loader2 } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -8,54 +8,332 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useCart } from "@/contexts/CartContext";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
-// Mock function para calcular frete baseado em CEP
-const calculateShipping = (cep: string, deliveryType: string): number => {
-  const cepNumber = parseInt(cep.replace(/\D/g, ""));
-  const saoLuisCep = 65000000;
-  const distance = Math.abs(cepNumber - saoLuisCep) / 100000;
-  const basePrice = deliveryType === "express" ? 25 : 15;
-  const distanceMultiplier = distance * (deliveryType === "express" ? 3 : 2);
-  return Math.max(basePrice, basePrice + distanceMultiplier);
-};
+interface ShippingOption {
+  type: string;
+  name: string;
+  price: number;
+  days: number;
+  service: string;
+}
+
+interface Coupon {
+  id: string;
+  code: string;
+  discount_type: "percentage" | "fixed";
+  discount_value: number;
+}
 
 const Checkout = () => {
   const [paymentMethod, setPaymentMethod] = useState("credit-card");
-  const [deliveryType, setDeliveryType] = useState("standard");
+  const [deliveryType, setDeliveryType] = useState("");
   const [cep, setCep] = useState("");
+  const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
   const [shippingCost, setShippingCost] = useState(0);
+  const [deliveryDays, setDeliveryDays] = useState(0);
+  const [loadingShipping, setLoadingShipping] = useState(false);
   const [whatsapp, setWhatsapp] = useState("");
   const [email, setEmail] = useState("");
-  const { items, totalPrice, clearCart } = useCart();
+  const [name, setName] = useState("");
+  const [address, setAddress] = useState("");
+  const [number, setNumber] = useState("");
+  const [complement, setComplement] = useState("");
+  const [neighborhood, setNeighborhood] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [loadingCoupon, setLoadingCoupon] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  
+  const { items, totalPrice, clearCart, updateQuantity } = useCart();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (cep.length === 9) {
-      const cost = calculateShipping(cep, deliveryType);
-      setShippingCost(cost);
+      calculateShipping();
+    } else {
+      setShippingOptions([]);
+      setDeliveryType("");
+      setShippingCost(0);
+      setDeliveryDays(0);
     }
-  }, [cep, deliveryType]);
+  }, [cep]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!email || !whatsapp) {
+  useEffect(() => {
+    if (deliveryType && shippingOptions.length > 0) {
+      const selectedOption = shippingOptions.find(opt => opt.type === deliveryType);
+      if (selectedOption) {
+        setShippingCost(selectedOption.price);
+        setDeliveryDays(selectedOption.days);
+      }
+    }
+  }, [deliveryType, shippingOptions]);
+
+  const calculateShipping = async () => {
+    setLoadingShipping(true);
+    try {
+      const response = await fetch(
+        "https://eheiujcuirpciqffcltr.supabase.co/functions/v1/calculate-shipping",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ cepDestino: cep }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.success && data.options) {
+        setShippingOptions(data.options);
+        if (data.options.length > 0) {
+          setDeliveryType(data.options[0].type);
+        }
+      } else {
+        toast({
+          title: "Erro ao calcular frete",
+          description: "Não foi possível calcular o frete para este CEP.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao calcular frete:", error);
       toast({
-        title: "Campos obrigatórios",
-        description: "Por favor, preencha email e WhatsApp para receber atualizações.",
+        title: "Erro",
+        description: "Não foi possível calcular o frete.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingShipping(false);
+    }
+  };
+
+  const validateCoupon = async () => {
+    if (!couponCode.trim()) {
+      toast({
+        title: "Código vazio",
+        description: "Digite um código de cupom.",
         variant: "destructive",
       });
       return;
     }
 
+    setLoadingCoupon(true);
+    try {
+      const { data, error } = await supabase
+        .from("coupons")
+        .select("*")
+        .eq("code", couponCode.toUpperCase())
+        .eq("is_active", true)
+        .gt("expires_at", new Date().toISOString())
+        .single();
+
+      if (error || !data) {
+        toast({
+          title: "Cupom inválido",
+          description: "Este cupom não existe, está expirado ou foi desativado.",
+          variant: "destructive",
+        });
+        setAppliedCoupon(null);
+        return;
+      }
+
+      setAppliedCoupon(data as Coupon);
+      toast({
+        title: "Cupom aplicado!",
+        description: `Desconto de ${data.discount_type === "percentage" ? `${data.discount_value}%` : `R$ ${data.discount_value.toFixed(2)}`} aplicado.`,
+      });
+    } catch (error) {
+      console.error("Erro ao validar cupom:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível validar o cupom.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingCoupon(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode("");
     toast({
-      title: "Pedido realizado com sucesso!",
-      description: "Você receberá atualizações no email e WhatsApp cadastrados.",
+      title: "Cupom removido",
+      description: "O desconto foi removido do pedido.",
     });
+  };
+
+  const calculateDiscount = () => {
+    if (!appliedCoupon) return 0;
+
+    if (appliedCoupon.discount_type === "percentage") {
+      return (totalPrice * appliedCoupon.discount_value) / 100;
+    } else {
+      return appliedCoupon.discount_value;
+    }
+  };
+
+  const discount = calculateDiscount();
+  const subtotal = totalPrice;
+  const finalTotal = Math.max(0, subtotal - discount + shippingCost);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    clearCart();
-    navigate("/");
+    if (!email || !whatsapp || !name || !address || !number || !city || !state || !cep) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Por favor, preencha todos os campos obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!deliveryType || shippingOptions.length === 0) {
+      toast({
+        title: "Frete não calculado",
+        description: "Por favor, calcule o frete antes de finalizar o pedido.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      // Verificar estoque antes de criar o pedido
+      for (const item of items) {
+        const { data: product } = await supabase
+          .from("products")
+          .select("variants")
+          .eq("id", item.id)
+          .single();
+
+        if (product) {
+          const variants = product.variants as any[];
+          const variant = variants.find(
+            (v: any) => v.color === item.selectedColor && v.size === item.selectedSize
+          );
+
+          if (!variant || variant.stock < item.quantity) {
+            toast({
+              title: "Estoque insuficiente",
+              description: `O produto "${item.name}" não tem estoque suficiente.`,
+              variant: "destructive",
+            });
+            setSubmitting(false);
+            return;
+          }
+        }
+      }
+
+      // Gerar número do pedido
+      const { data: orderNumberData, error: orderNumberError } = await supabase
+        .rpc("generate_order_number");
+
+      if (orderNumberError) throw orderNumberError;
+
+      const orderNumber = orderNumberData;
+
+      // Criar pedido
+      const { data: order, error: orderError } = await supabase
+        .from("orders")
+        .insert({
+          order_number: orderNumber,
+          customer_name: name,
+          customer_email: email,
+          customer_phone: whatsapp,
+          customer_whatsapp: whatsapp,
+          shipping_cep: cep,
+          shipping_street: address,
+          shipping_number: number,
+          shipping_complement: complement || null,
+          shipping_neighborhood: neighborhood,
+          shipping_city: city,
+          shipping_state: state,
+          delivery_type: deliveryType,
+          delivery_days: deliveryDays,
+          payment_method: paymentMethod,
+          subtotal: subtotal,
+          shipping_cost: shippingCost,
+          discount_amount: discount,
+          total: finalTotal,
+          coupon_code: appliedCoupon?.code || null,
+          status: "pending",
+        })
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      // Criar itens do pedido
+      const orderItems = items.map((item) => ({
+        order_id: order.id,
+        product_id: item.id,
+        product_name: item.name,
+        product_image: item.image,
+        product_price: item.price_value,
+        selected_color: item.selectedColor,
+        selected_size: item.selectedSize,
+        quantity: item.quantity,
+        subtotal: item.price_value * item.quantity,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from("order_items")
+        .insert(orderItems);
+
+      if (itemsError) throw itemsError;
+
+      // Atualizar estoque
+      for (const item of items) {
+        const { data: product } = await supabase
+          .from("products")
+          .select("variants")
+          .eq("id", item.id)
+          .single();
+
+        if (product) {
+          const variants = product.variants as any[];
+          const updatedVariants = variants.map((v: any) => {
+            if (v.color === item.selectedColor && v.size === item.selectedSize) {
+              return {
+                ...v,
+                stock: v.stock - item.quantity,
+              };
+            }
+            return v;
+          });
+
+          await supabase
+            .from("products")
+            .update({ variants: updatedVariants })
+            .eq("id", item.id);
+        }
+      }
+
+      toast({
+        title: "Pedido realizado com sucesso!",
+        description: `Número do pedido: ${orderNumber}. Você receberá atualizações no email e WhatsApp cadastrados.`,
+      });
+      
+      clearCart();
+      navigate("/order-tracking");
+    } catch (error) {
+      console.error("Erro ao criar pedido:", error);
+      toast({
+        title: "Erro ao processar pedido",
+        description: "Não foi possível finalizar o pedido. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const formatCep = (value: string) => {
@@ -109,9 +387,14 @@ const Checkout = () => {
                 Informações Pessoais
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="name">Nome Completo *</Label>
-                  <Input id="name" required />
+                  <Input 
+                    id="name" 
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required 
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email *</Label>
@@ -124,7 +407,7 @@ const Checkout = () => {
                     required 
                   />
                 </div>
-                <div className="space-y-2 sm:col-span-2">
+                <div className="space-y-2">
                   <Label htmlFor="phone">WhatsApp *</Label>
                   <Input 
                     id="phone" 
@@ -134,9 +417,6 @@ const Checkout = () => {
                     onChange={(e) => setWhatsapp(e.target.value)}
                     required 
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Você receberá atualizações do pedido via WhatsApp
-                  </p>
                 </div>
               </div>
             </div>
@@ -152,76 +432,172 @@ const Checkout = () => {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="cep">CEP *</Label>
-                  <Input 
-                    id="cep" 
-                    placeholder="00000-000"
-                    value={cep}
-                    onChange={handleCepChange}
-                    maxLength={9}
-                    required 
-                  />
-                  {cep.length === 9 && (
+                  <div className="flex gap-2">
+                    <Input 
+                      id="cep" 
+                      placeholder="00000-000"
+                      value={cep}
+                      onChange={handleCepChange}
+                      maxLength={9}
+                      required 
+                      className="flex-1"
+                    />
+                  </div>
+                  {cep.length === 9 && !loadingShipping && shippingOptions.length > 0 && (
                     <p className="text-xs text-green-600">
                       ✓ CEP válido. Frete calculado abaixo.
+                    </p>
+                  )}
+                  {loadingShipping && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-2">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Calculando frete...
                     </p>
                   )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="address">Endereço *</Label>
-                  <Input id="address" required />
+                  <Input 
+                    id="address" 
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    required 
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="number">Número *</Label>
-                    <Input id="number" required />
+                    <Input 
+                      id="number" 
+                      value={number}
+                      onChange={(e) => setNumber(e.target.value)}
+                      required 
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="complement">Complemento</Label>
-                    <Input id="complement" />
+                    <Input 
+                      id="complement"
+                      value={complement}
+                      onChange={(e) => setComplement(e.target.value)}
+                    />
                   </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="neighborhood">Bairro *</Label>
+                  <Input 
+                    id="neighborhood"
+                    value={neighborhood}
+                    onChange={(e) => setNeighborhood(e.target.value)}
+                    required 
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="city">Cidade *</Label>
-                    <Input id="city" required />
+                    <Input 
+                      id="city"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      required 
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="state">Estado *</Label>
-                    <Input id="state" required />
+                    <Input 
+                      id="state"
+                      value={state}
+                      onChange={(e) => setState(e.target.value)}
+                      maxLength={2}
+                      required 
+                    />
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Tipo de Entrega */}
+            {shippingOptions.length > 0 && (
+              <div className="bg-card rounded-xl p-6 shadow-soft space-y-4">
+                <h2 className="font-playfair text-2xl font-bold text-foreground mb-4">
+                  Tipo de Entrega
+                </h2>
+                <RadioGroup value={deliveryType} onValueChange={setDeliveryType}>
+                  {shippingOptions.map((option) => (
+                    <div 
+                      key={option.type}
+                      className="flex items-center space-x-3 p-4 border-2 border-border rounded-lg cursor-pointer hover:border-primary transition-colors"
+                    >
+                      <RadioGroupItem value={option.type} id={option.type} />
+                      <Label htmlFor={option.type} className="flex-1 cursor-pointer">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <p className="font-semibold">{option.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {option.days} {option.days === 1 ? "dia útil" : "dias úteis"}
+                            </p>
+                          </div>
+                          <p className="font-semibold text-primary">
+                            {option.price === 0 ? "Grátis" : `R$ ${option.price.toFixed(2)}`}
+                          </p>
+                        </div>
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </div>
+            )}
+
+            {/* Cupom de Desconto */}
             <div className="bg-card rounded-xl p-6 shadow-soft space-y-4">
-              <h2 className="font-playfair text-2xl font-bold text-foreground mb-4">
-                Tipo de Entrega
-              </h2>
-              <RadioGroup value={deliveryType} onValueChange={setDeliveryType}>
-                <div className="flex items-center space-x-3 p-4 border-2 border-border rounded-lg cursor-pointer hover:border-primary transition-colors">
-                  <RadioGroupItem value="standard" id="standard" />
-                  <Label htmlFor="standard" className="flex-1 cursor-pointer">
-                    <div>
-                      <p className="font-semibold">Entrega Padrão</p>
-                      <p className="text-sm text-muted-foreground">
-                        10-15 dias úteis - Mais econômico
-                      </p>
-                    </div>
-                  </Label>
+              <div className="flex items-center gap-2 mb-4">
+                <Tag className="h-5 w-5 text-primary" />
+                <h2 className="font-playfair text-2xl font-bold text-foreground">
+                  Cupom de Desconto
+                </h2>
+              </div>
+              {!appliedCoupon ? (
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Digite o código do cupom"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                    disabled={loadingCoupon}
+                  />
+                  <Button
+                    type="button"
+                    onClick={validateCoupon}
+                    disabled={loadingCoupon || !couponCode.trim()}
+                  >
+                    {loadingCoupon ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      "Aplicar"
+                    )}
+                  </Button>
                 </div>
-                <div className="flex items-center space-x-3 p-4 border-2 border-border rounded-lg cursor-pointer hover:border-primary transition-colors">
-                  <RadioGroupItem value="express" id="express" />
-                  <Label htmlFor="express" className="flex-1 cursor-pointer">
-                    <div>
-                      <p className="font-semibold">Entrega Expressa</p>
-                      <p className="text-sm text-muted-foreground">
-                        5-7 dias úteis - Mais rápido
-                      </p>
-                    </div>
-                  </Label>
+              ) : (
+                <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 border-2 border-green-500 rounded-lg">
+                  <div>
+                    <p className="font-semibold text-green-700 dark:text-green-400">
+                      Cupom {appliedCoupon.code} aplicado!
+                    </p>
+                    <p className="text-sm text-green-600 dark:text-green-500">
+                      Desconto de {appliedCoupon.discount_type === "percentage" 
+                        ? `${appliedCoupon.discount_value}%` 
+                        : `R$ ${appliedCoupon.discount_value.toFixed(2)}`}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={removeCoupon}
+                  >
+                    Remover
+                  </Button>
                 </div>
-              </RadioGroup>
+              )}
             </div>
 
             {/* Pagamento */}
@@ -243,25 +619,6 @@ const Checkout = () => {
                 </div>
               </RadioGroup>
 
-              {paymentMethod === "credit-card" && (
-                <div className="space-y-4 mt-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="cardNumber">Número do Cartão</Label>
-                    <Input id="cardNumber" placeholder="0000 0000 0000 0000" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="expiry">Validade</Label>
-                      <Input id="expiry" placeholder="MM/AA" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="cvv">CVV</Label>
-                      <Input id="cvv" placeholder="000" />
-                    </div>
-                  </div>
-                </div>
-              )}
-
               <div className="mt-4 p-4 bg-muted/50 rounded-lg">
                 <p className="text-xs text-muted-foreground">
                   <strong>Nota:</strong> Sistema mockado. Integração com Stripe será implementada.
@@ -269,8 +626,20 @@ const Checkout = () => {
               </div>
             </div>
 
-            <Button type="submit" size="lg" className="w-full h-14 text-lg font-semibold">
-              Finalizar Pedido
+            <Button 
+              type="submit" 
+              size="lg" 
+              className="w-full h-14 text-lg font-semibold"
+              disabled={submitting || shippingOptions.length === 0}
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                  Processando...
+                </>
+              ) : (
+                "Finalizar Pedido"
+              )}
             </Button>
           </form>
 
@@ -283,7 +652,7 @@ const Checkout = () => {
 
               <div className="space-y-4 mb-6">
                 {items.map((item) => (
-                  <div key={item.id} className="flex gap-4">
+                  <div key={`${item.id}-${item.selectedColor}-${item.selectedSize}`} className="flex gap-4">
                     <img
                       src={item.image}
                       alt={item.name}
@@ -291,6 +660,9 @@ const Checkout = () => {
                     />
                     <div className="flex-1">
                       <p className="font-playfair font-semibold">{item.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Cor: {item.selectedColor} | Tamanho: {item.selectedSize}
+                      </p>
                       <p className="text-sm text-muted-foreground">
                         Quantidade: {item.quantity}
                       </p>
@@ -306,13 +678,25 @@ const Checkout = () => {
                 <div className="flex justify-between">
                   <p className="font-inter text-foreground">Subtotal</p>
                   <p className="font-inter font-semibold">
-                    R$ {totalPrice.toFixed(2)}
+                    R$ {subtotal.toFixed(2)}
                   </p>
                 </div>
+                {discount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <p className="font-inter">Desconto</p>
+                    <p className="font-inter font-semibold">
+                      - R$ {discount.toFixed(2)}
+                    </p>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <p className="font-inter text-foreground">Frete</p>
                   <p className="font-inter font-semibold">
-                    {cep.length === 9 ? `R$ ${shippingCost.toFixed(2)}` : "Calcule o CEP"}
+                    {cep.length === 9 && shippingOptions.length > 0 
+                      ? shippingCost === 0 
+                        ? "Grátis" 
+                        : `R$ ${shippingCost.toFixed(2)}` 
+                      : "Calcule o CEP"}
                   </p>
                 </div>
               </div>
@@ -323,7 +707,7 @@ const Checkout = () => {
                     Total
                   </p>
                   <p className="font-playfair text-2xl font-bold text-primary">
-                    R$ {(totalPrice + shippingCost).toFixed(2)}
+                    R$ {finalTotal.toFixed(2)}
                   </p>
                 </div>
               </div>
