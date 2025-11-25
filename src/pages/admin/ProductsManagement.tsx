@@ -3,27 +3,91 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, Plus, Search, Edit, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { products } from "@/data/products";
 import { toast } from "@/hooks/use-toast";
+import ProductForm from "@/components/admin/ProductForm";
 
 const ProductsManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
-
-  // Mock products list - preparado para Firebase Firestore
-  const [productsList] = useState(products);
+  const [productsList, setProductsList] = useState(products);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<typeof products[0] | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<number | null>(null);
 
   const filteredProducts = productsList.filter((product) =>
     product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     product.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleDelete = (id: number) => {
+  const handleAddProduct = (data: any) => {
     // TODO: Integrar com Firebase Firestore
-    // deleteDoc(doc(db, "products", id))
+    // await addDoc(collection(db, "products"), data)
+    const newProduct = {
+      id: productsList.length + 1,
+      ...data,
+      image: data.images?.[0] || "/placeholder.svg",
+    };
+    setProductsList([...productsList, newProduct]);
+    setIsFormOpen(false);
     toast({
-      title: "Produto removido",
-      description: "O produto foi removido com sucesso.",
+      title: "Produto adicionado",
+      description: "O produto foi adicionado com sucesso.",
     });
+  };
+
+  const handleEditProduct = (data: any) => {
+    // TODO: Integrar com Firebase Firestore
+    // await updateDoc(doc(db, "products", editingProduct.id), data)
+    setProductsList(productsList.map(p => 
+      p.id === editingProduct?.id ? { ...p, ...data } : p
+    ));
+    setIsFormOpen(false);
+    setEditingProduct(null);
+    toast({
+      title: "Produto atualizado",
+      description: "As alterações foram salvas com sucesso.",
+    });
+  };
+
+  const handleDeleteConfirm = () => {
+    if (productToDelete) {
+      // TODO: Integrar com Firebase Firestore
+      // await deleteDoc(doc(db, "products", productToDelete))
+      setProductsList(productsList.filter(p => p.id !== productToDelete));
+      toast({
+        title: "Produto removido",
+        description: "O produto foi removido com sucesso.",
+      });
+    }
+    setDeleteDialogOpen(false);
+    setProductToDelete(null);
+  };
+
+  const openEditDialog = (product: typeof products[0]) => {
+    setEditingProduct(product);
+    setIsFormOpen(true);
+  };
+
+  const openDeleteDialog = (id: number) => {
+    setProductToDelete(id);
+    setDeleteDialogOpen(true);
   };
 
   return (
@@ -42,7 +106,7 @@ const ProductsManagement = () => {
                 Gerenciar Produtos
               </h1>
             </div>
-            <Button>
+            <Button onClick={() => setIsFormOpen(true)}>
               <Plus className="h-5 w-5 mr-2" />
               Novo Produto
             </Button>
@@ -109,13 +173,17 @@ const ProductsManagement = () => {
                     </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="icon">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => openEditDialog(product)}
+                        >
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDelete(product.id)}
+                          onClick={() => openDeleteDialog(product.id)}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -129,12 +197,54 @@ const ProductsManagement = () => {
         </div>
 
         <div className="mt-6 p-4 bg-muted/50 rounded-lg border border-border">
-          <p className="text-sm font-inter text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             <strong>Nota:</strong> Estrutura preparada para integração com Firebase Firestore e Storage.
             Upload de imagens e vídeos será feito via Firebase Storage.
           </p>
         </div>
       </div>
+
+      {/* Add/Edit Product Dialog */}
+      <Dialog open={isFormOpen} onOpenChange={(open) => {
+        setIsFormOpen(open);
+        if (!open) setEditingProduct(null);
+      }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-playfair text-2xl">
+              {editingProduct ? "Editar Produto" : "Novo Produto"}
+            </DialogTitle>
+          </DialogHeader>
+          <ProductForm
+            product={editingProduct || undefined}
+            onSubmit={editingProduct ? handleEditProduct : handleAddProduct}
+            onCancel={() => {
+              setIsFormOpen(false);
+              setEditingProduct(null);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-playfair text-xl">
+              Confirmar exclusão
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja remover este produto? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
