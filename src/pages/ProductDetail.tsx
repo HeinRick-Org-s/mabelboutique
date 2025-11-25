@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ShoppingBag, ChevronLeft, Loader2, Package, Minus, Plus } from "lucide-react";
 import Header from "@/components/Header";
@@ -22,6 +22,34 @@ const ProductDetail = () => {
   const [selectedColor, setSelectedColor] = useState<string>("");
   const [quantity, setQuantity] = useState<number>(1);
   const { data: product, isLoading } = useProduct(id || "");
+
+  // Obter cores e tamanhos únicos das variantes
+  const availableColors = useMemo(() => {
+    if (!product) return [];
+    return Array.from(new Set(product.variants.map(v => v.color)));
+  }, [product]);
+
+  const availableSizes = useMemo(() => {
+    if (!product || !selectedColor) return [];
+    return product.variants
+      .filter(v => v.color === selectedColor)
+      .map(v => v.size);
+  }, [product, selectedColor]);
+
+  // Obter estoque da variante selecionada
+  const selectedVariantStock = useMemo(() => {
+    if (!product || !selectedColor || !selectedSize) return 0;
+    const variant = product.variants.find(
+      v => v.color === selectedColor && v.size === selectedSize
+    );
+    return variant?.stock || 0;
+  }, [product, selectedColor, selectedSize]);
+
+  // Calcular estoque total
+  const totalStock = useMemo(() => {
+    if (!product) return 0;
+    return product.variants.reduce((sum, v) => sum + v.stock, 0);
+  }, [product]);
 
   if (isLoading) {
     return (
@@ -53,15 +81,7 @@ const ProductDetail = () => {
   }
 
   const handleAddToCart = async () => {
-    if (product.sizes && product.sizes.length > 0 && !selectedSize) {
-      toast({
-        title: "Selecione um tamanho",
-        description: "Por favor, escolha um tamanho antes de adicionar ao carrinho.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (product.colors && product.colors.length > 0 && !selectedColor) {
+    if (!selectedColor) {
       toast({
         title: "Selecione uma cor",
         description: "Por favor, escolha uma cor antes de adicionar ao carrinho.",
@@ -69,7 +89,15 @@ const ProductDetail = () => {
       });
       return;
     }
-    const success = await addToCart(product, quantity);
+    if (!selectedSize) {
+      toast({
+        title: "Selecione um tamanho",
+        description: "Por favor, escolha um tamanho antes de adicionar ao carrinho.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const success = await addToCart(product, selectedColor, selectedSize, quantity);
     if (success) {
       setQuantity(1);
     }
@@ -77,15 +105,21 @@ const ProductDetail = () => {
 
   const handleQuantityChange = (newQuantity: number) => {
     if (newQuantity < 1) return;
-    if (newQuantity > product.stock) {
+    if (newQuantity > selectedVariantStock) {
       toast({
         title: "Quantidade indisponível",
-        description: `Apenas ${product.stock} unidade(s) disponível(is).`,
+        description: `Apenas ${selectedVariantStock} unidade(s) disponível(is) para esta variante.`,
         variant: "destructive",
       });
       return;
     }
     setQuantity(newQuantity);
+  };
+
+  const handleColorSelect = (color: string) => {
+    setSelectedColor(color);
+    setSelectedSize(""); // Reset tamanho ao trocar cor
+    setQuantity(1); // Reset quantidade
   };
 
   const productImages = product.images || [product.image];
@@ -107,7 +141,7 @@ const ProductDetail = () => {
           <div className="space-y-6">
             {/* Image Carousel */}
             <div className="relative">
-              {product.stock === 0 && (
+              {totalStock === 0 && (
                 <div className="absolute top-4 left-4 z-10 bg-destructive text-destructive-foreground px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2">
                   <Package className="h-4 w-4" />
                   Sem Estoque
@@ -162,8 +196,8 @@ const ProductDetail = () => {
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Package className="h-4 w-4" />
                   <span>
-                    {product.stock > 0 
-                      ? `${product.stock} unidade(s) disponível(is)` 
+                    {totalStock > 0 
+                      ? `${totalStock} unidade(s) disponível(is)` 
                       : "Produto indisponível"}
                   </span>
                 </div>
@@ -180,16 +214,16 @@ const ProductDetail = () => {
             </div>
 
             {/* Colors */}
-            {product.colors && product.colors.length > 0 && (
+            {availableColors.length > 0 && (
               <div className="mb-8">
                 <h3 className="font-playfair text-xl font-semibold text-foreground mb-4">
                   Cores Disponíveis
                 </h3>
                 <div className="flex flex-wrap gap-3">
-                  {product.colors.map((color) => (
+                  {availableColors.map((color) => (
                     <button
                       key={color}
-                      onClick={() => setSelectedColor(color)}
+                      onClick={() => handleColorSelect(color)}
                       className={`px-6 py-3 border-2 rounded-lg font-inter font-medium transition-all capitalize ${
                         selectedColor === color
                           ? "border-primary bg-primary text-primary-foreground shadow-medium"
@@ -204,13 +238,13 @@ const ProductDetail = () => {
             )}
 
             {/* Sizes */}
-            {product.sizes && product.sizes.length > 0 && (
+            {selectedColor && availableSizes.length > 0 && (
               <div className="mb-8">
                 <h3 className="font-playfair text-xl font-semibold text-foreground mb-4">
                   Tamanhos
                 </h3>
                 <div className="flex flex-wrap gap-3">
-                  {product.sizes.map((size) => (
+                  {availableSizes.map((size) => (
                     <button
                       key={size}
                       onClick={() => setSelectedSize(size)}
@@ -227,8 +261,23 @@ const ProductDetail = () => {
               </div>
             )}
 
+            {/* Stock Info para variante selecionada */}
+            {selectedColor && selectedSize && (
+              <div className="mb-6 p-4 bg-secondary/50 rounded-lg">
+                <div className="flex items-center gap-2 text-sm">
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">
+                    Estoque para {selectedColor} - {selectedSize}:{" "}
+                    <span className="font-semibold text-foreground">
+                      {selectedVariantStock} unidade(s)
+                    </span>
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* Quantity Selector */}
-            {product.stock > 0 && (
+            {selectedColor && selectedSize && selectedVariantStock > 0 && (
               <div className="mb-6">
                 <h3 className="font-playfair text-xl font-semibold text-foreground mb-4">
                   Quantidade
@@ -251,7 +300,7 @@ const ProductDetail = () => {
                     size="icon"
                     className="h-12 w-12"
                     onClick={() => handleQuantityChange(quantity + 1)}
-                    disabled={quantity >= product.stock}
+                    disabled={quantity >= selectedVariantStock}
                   >
                     <Plus className="h-5 w-5" />
                   </Button>
@@ -264,10 +313,10 @@ const ProductDetail = () => {
               size="lg"
               className="w-full mb-6 h-14 text-lg font-semibold shadow-medium hover:shadow-hover transition-all"
               onClick={handleAddToCart}
-              disabled={product.stock === 0}
+              disabled={totalStock === 0 || !selectedColor || !selectedSize}
             >
               <ShoppingBag className="h-6 w-6 mr-3" />
-              {product.stock === 0 ? "Produto Indisponível" : "Adicionar ao Carrinho"}
+              {totalStock === 0 ? "Produto Indisponível" : "Adicionar ao Carrinho"}
             </Button>
 
             {/* Additional Info */}

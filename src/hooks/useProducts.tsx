@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Product } from "@/types/product";
+import { Product, ProductVariant } from "@/types/product";
 
 export type { Product } from "@/types/product";
 
@@ -15,7 +15,10 @@ export const useProducts = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return (data || []) as Product[];
+      return (data || []).map(p => ({
+        ...p,
+        variants: (p.variants as any as ProductVariant[]) || []
+      })) as Product[];
     },
     staleTime: 1000 * 60 * 5, // Cache por 5 minutos
   });
@@ -31,7 +34,10 @@ export const useAdminProducts = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return data as Product[];
+      return (data || []).map(p => ({
+        ...p,
+        variants: (p.variants as any as ProductVariant[]) || []
+      })) as Product[];
     },
   });
 };
@@ -48,7 +54,10 @@ export const useFeaturedProducts = (limit: number = 6) => {
         .limit(limit);
 
       if (error) throw error;
-      return data as Product[];
+      return (data || []).map(p => ({
+        ...p,
+        variants: (p.variants as any as ProductVariant[]) || []
+      })) as Product[];
     },
   });
 };
@@ -64,7 +73,11 @@ export const useProduct = (id: string) => {
         .maybeSingle();
 
       if (error) throw error;
-      return data as Product | null;
+      if (!data) return null;
+      return {
+        ...data,
+        variants: (data.variants as any as ProductVariant[]) || []
+      } as Product;
     },
     enabled: !!id,
   });

@@ -243,13 +243,13 @@ const ProductsManagement = () => {
                           </td>
                           <td className="py-4 px-6 text-center">
                             <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
-                              product.stock === 0 
+                              product.variants.reduce((sum, v) => sum + v.stock, 0) === 0 
                                 ? 'bg-destructive/10 text-destructive' 
-                                : product.stock < 10 
+                                : product.variants.reduce((sum, v) => sum + v.stock, 0) < 10 
                                 ? 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400' 
                                 : 'bg-green-500/10 text-green-700 dark:text-green-400'
                             }`}>
-                              {product.stock}
+                              {product.variants.reduce((sum, v) => sum + v.stock, 0)}
                             </span>
                           </td>
                           <td className="py-4 px-6 text-center">

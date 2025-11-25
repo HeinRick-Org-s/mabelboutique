@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+const variantSchema = z.object({
+  color: z.string().trim().min(1, { message: "Cor é obrigatória" }),
+  size: z.string().trim().min(1, { message: "Tamanho é obrigatório" }),
+  stock: z.number().int().min(0, { message: "Estoque não pode ser negativo" }),
+});
+
 export const productSchema = z.object({
   name: z.string()
     .trim()
@@ -25,11 +31,8 @@ export const productSchema = z.object({
     .min(10, { message: "Descrição deve ter pelo menos 10 caracteres" })
     .max(1000, { message: "Descrição deve ter no máximo 1000 caracteres" }),
   
-  sizes: z.array(z.string().trim().min(1))
-    .min(1, { message: "Adicione pelo menos um tamanho" }),
-  
-  colors: z.array(z.string().trim().min(1))
-    .min(1, { message: "Adicione pelo menos uma cor" }),
+  variants: z.array(variantSchema)
+    .min(1, { message: "Adicione pelo menos uma variante (cor + tamanho + estoque)" }),
   
   image: z.string()
     .url({ message: "URL de imagem inválida" }),
@@ -41,10 +44,6 @@ export const productSchema = z.object({
     .url({ message: "URL de vídeo inválida" })
     .optional()
     .or(z.literal("")),
-  
-  stock: z.number()
-    .int({ message: "Estoque deve ser um número inteiro" })
-    .min(0, { message: "Estoque não pode ser negativo" }),
   
   is_visible: z.boolean(),
 });

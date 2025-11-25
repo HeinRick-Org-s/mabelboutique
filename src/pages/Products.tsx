@@ -117,7 +117,7 @@ const Products = () => {
             <div key={product.id} className="group relative">
               <Link to={`/product/${product.id}`}>
                 <div className="relative overflow-hidden rounded-lg bg-muted mb-4 aspect-square">
-                  {product.stock === 0 && (
+                  {product.variants.reduce((sum, v) => sum + v.stock, 0) === 0 && (
                     <div className="absolute top-4 left-4 z-10 bg-destructive text-destructive-foreground px-3 py-1 rounded-md text-sm font-semibold">
                       Sem Estoque
                     </div>
