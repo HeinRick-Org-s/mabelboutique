@@ -375,10 +375,19 @@ const Checkout = () => {
         }
       );
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro ao invocar função:", error);
+        throw error;
+      }
+
+      console.log("Resposta da edge function:", data);
+
+      if (!data?.url) {
+        throw new Error("URL de checkout não retornada");
+      }
 
       // Mostrar aviso se PIX não estiver disponível
-      if (data?.warning) {
+      if (data.warning) {
         toast({
           title: "Aviso",
           description: data.warning,
@@ -386,12 +395,9 @@ const Checkout = () => {
         });
       }
 
-      if (data?.url) {
-        // Redirecionar para página de pagamento do Stripe
-        window.location.href = data.url;
-      } else {
-        throw new Error("URL de checkout não retornada");
-      }
+      // Redirecionar para página de pagamento do Stripe
+      console.log("Redirecionando para:", data.url);
+      window.location.href = data.url;
     } catch (error) {
       console.error("Erro ao processar pagamento:", error);
       toast({
