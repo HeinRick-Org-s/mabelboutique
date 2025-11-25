@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/carousel";
 import { products } from "@/data/products";
 
+// Products page - no cart functionality needed here
 const Products = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedCategory, setSelectedCategory] = useState("all");
