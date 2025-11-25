@@ -9,8 +9,8 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const { data: products = [] } = useProducts();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate("/admin/login");
   };
 

@@ -114,39 +114,37 @@ const Products = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             {filteredProducts.map((product) => (
-            <Link
-              key={product.id}
-              to={`/product/${product.id}`}
-              className="group"
-            >
-              <div className="relative overflow-hidden rounded-lg bg-muted mb-4 aspect-square">
-                <Carousel className="w-full h-full">
-                  <CarouselContent>
-                    {(product.images || [product.image]).map((img, index) => (
-                      <CarouselItem key={index}>
-                        <img
-                          src={img}
-                          alt={`${product.name} - ${index + 1}`}
-                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        />
-                      </CarouselItem>
-                    ))}
-                  </CarouselContent>
-                  {(product.images?.length || 0) > 1 && (
-                    <>
-                      <CarouselPrevious className="left-2" />
-                      <CarouselNext className="right-2" />
-                    </>
-                  )}
-                </Carousel>
-              </div>
-              <h3 className="font-playfair text-xl font-semibold text-foreground mb-2">
-                {product.name}
-              </h3>
-              <p className="font-inter text-xl font-bold text-primary">
-                {product.price}
-              </p>
-            </Link>
+            <div key={product.id} className="group">
+              <Link to={`/product/${product.id}`}>
+                <div className="relative overflow-hidden rounded-lg bg-muted mb-4 aspect-square">
+                  <Carousel className="w-full h-full">
+                    <CarouselContent>
+                      {(product.images || [product.image]).map((img, index) => (
+                        <CarouselItem key={index}>
+                          <img
+                            src={img}
+                            alt={`${product.name} - ${index + 1}`}
+                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                        </CarouselItem>
+                      ))}
+                    </CarouselContent>
+                    {(product.images?.length || 0) > 1 && (
+                      <>
+                        <CarouselPrevious className="left-2" onClick={(e) => e.preventDefault()} />
+                        <CarouselNext className="right-2" onClick={(e) => e.preventDefault()} />
+                      </>
+                    )}
+                  </Carousel>
+                </div>
+                <h3 className="font-playfair text-xl font-semibold text-foreground mb-2">
+                  {product.name}
+                </h3>
+                <p className="font-inter text-xl font-bold text-primary">
+                  {product.price}
+                </p>
+              </Link>
+            </div>
           ))}
           </div>
         )}
