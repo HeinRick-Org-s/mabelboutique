@@ -226,6 +226,48 @@ export type Database = {
         }
         Relationships: []
       }
+      store_settings: {
+        Row: {
+          created_at: string
+          id: string
+          store_address: string | null
+          store_cep: string | null
+          store_city: string | null
+          store_complement: string | null
+          store_name: string | null
+          store_neighborhood: string | null
+          store_number: string | null
+          store_state: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          store_address?: string | null
+          store_cep?: string | null
+          store_city?: string | null
+          store_complement?: string | null
+          store_name?: string | null
+          store_neighborhood?: string | null
+          store_number?: string | null
+          store_state?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          store_address?: string | null
+          store_cep?: string | null
+          store_city?: string | null
+          store_complement?: string | null
+          store_name?: string | null
+          store_neighborhood?: string | null
+          store_number?: string | null
+          store_state?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null

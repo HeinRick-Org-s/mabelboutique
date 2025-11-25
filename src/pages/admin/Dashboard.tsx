@@ -127,10 +127,12 @@ const AdminDashboard = () => {
                 Cupons
               </Button>
             </Link>
-            <Button className="w-full h-20 text-lg" variant="outline">
-              <Settings className="h-6 w-6 mr-3" />
-              Configurações
-            </Button>
+            <Link to="/admin/settings">
+              <Button className="w-full h-20 text-lg" variant="outline">
+                <Settings className="h-6 w-6 mr-3" />
+                Configurações
+              </Button>
+            </Link>
           </div>
         </div>
       </div>
