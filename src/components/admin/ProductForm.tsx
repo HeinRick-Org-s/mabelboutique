@@ -14,8 +14,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Upload, Loader2, X } from "lucide-react";
 import { productSchema } from "@/lib/validations/product";
 import { toast } from "@/hooks/use-toast";
-import { Product } from "@/types/product";
+import { Product, ProductVariant } from "@/types/product";
 import { TablesInsert } from "@/integrations/supabase/types";
+import { VariantManager } from "./VariantManager";
 import { supabase } from "@/integrations/supabase/client";
 
 const categories = [
@@ -59,11 +60,10 @@ const ProductForm = ({ product, onSubmit, onCancel }: ProductFormProps) => {
     price: product?.price || "",
     category: product?.category || "Vestidos",
     description: product?.description || "",
-    sizes: product?.sizes?.join(", ") || "",
-    colors: product?.colors?.join(", ") || "",
-    stock: product?.stock?.toString() || "0",
     is_visible: product?.is_visible ?? true,
   });
+
+  const [variants, setVariants] = useState<ProductVariant[]>(product?.variants || []);
 
   const parsePrice = (priceStr: string): number => {
     const cleanPrice = priceStr.replace(/[R$\s.]/g, "").replace(",", ".");
@@ -147,9 +147,6 @@ const ProductForm = ({ product, onSubmit, onCancel }: ProductFormProps) => {
     setIsSubmitting(true);
 
     try {
-      const sizesArray = formData.sizes.split(",").map(s => s.trim()).filter(Boolean);
-      const colorsArray = formData.colors.split(",").map(c => c.trim()).filter(Boolean);
-
       const totalImages = existingImages.length + pendingImages.length;
       if (totalImages === 0) {
         toast({
@@ -230,12 +227,10 @@ const ProductForm = ({ product, onSubmit, onCancel }: ProductFormProps) => {
         price_value: parsePrice(formData.price),
         category: formData.category,
         description: formData.description,
-        sizes: sizesArray,
-        colors: colorsArray,
+        variants: variants,
         image: uploadedImageUrls[0],
         images: uploadedImageUrls,
         video: finalVideoUrl || "",
-        stock: parseInt(formData.stock) || 0,
         is_visible: formData.is_visible,
       };
 
@@ -257,7 +252,7 @@ const ProductForm = ({ product, onSubmit, onCancel }: ProductFormProps) => {
         return;
       }
 
-      await onSubmit(validation.data as Omit<Product, 'id' | 'created_at' | 'updated_at'>);
+      await onSubmit(validation.data as any);
     } catch (error: any) {
       toast({
         title: "Erro ao salvar produto",
@@ -335,49 +330,14 @@ const ProductForm = ({ product, onSubmit, onCancel }: ProductFormProps) => {
         {errors.description && <p className="text-sm text-destructive mt-1">{errors.description}</p>}
       </div>
 
-      {/* Sizes */}
+      {/* Variants */}
       <div>
-        <Label htmlFor="sizes">Tamanhos * (separados por vírgula)</Label>
-        <Input
-          id="sizes"
-          value={formData.sizes}
-          onChange={(e) => setFormData({ ...formData, sizes: e.target.value })}
-          placeholder="PP, P, M, G, GG"
-          className={`mt-2 ${errors.sizes ? 'border-destructive' : ''}`}
+        <VariantManager 
+          variants={variants}
+          onChange={setVariants}
           disabled={isSubmitting}
         />
-        {errors.sizes && <p className="text-sm text-destructive mt-1">{errors.sizes}</p>}
-      </div>
-
-      {/* Colors */}
-      <div>
-        <Label htmlFor="colors">Cores * (separadas por vírgula)</Label>
-        <Input
-          id="colors"
-          value={formData.colors}
-          onChange={(e) => setFormData({ ...formData, colors: e.target.value })}
-          placeholder="Verde Musgo, Preto, Bege"
-          className={`mt-2 ${errors.colors ? 'border-destructive' : ''}`}
-          disabled={isSubmitting}
-        />
-        {errors.colors && <p className="text-sm text-destructive mt-1">{errors.colors}</p>}
-      </div>
-
-      {/* Stock */}
-      <div>
-        <Label htmlFor="stock">Estoque *</Label>
-        <Input
-          id="stock"
-          type="number"
-          min="0"
-          value={formData.stock}
-          onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-          placeholder="0"
-          className={`mt-2 ${errors.stock ? 'border-destructive' : ''}`}
-          disabled={isSubmitting}
-        />
-        {errors.stock && <p className="text-sm text-destructive mt-1">{errors.stock}</p>}
-        <p className="text-xs text-muted-foreground mt-1">Quantidade disponível em estoque</p>
+        {errors.variants && <p className="text-sm text-destructive mt-1">{errors.variants}</p>}
       </div>
 
       {/* Visibility */}

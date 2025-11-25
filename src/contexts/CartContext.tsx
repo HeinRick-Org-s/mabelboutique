@@ -1,13 +1,13 @@
 import { createContext, useContext, useState, ReactNode } from "react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Product, CartItem } from "@/types/product";
+import { Product, CartItem, ProductVariant } from "@/types/product";
 
 interface CartContextType {
   items: CartItem[];
-  addToCart: (product: Product, quantity?: number) => Promise<boolean>;
-  removeFromCart: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => Promise<void>;
+  addToCart: (product: Product, selectedColor: string, selectedSize: string, quantity?: number) => Promise<boolean>;
+  removeFromCart: (productId: string, selectedColor: string, selectedSize: string) => void;
+  updateQuantity: (productId: string, selectedColor: string, selectedSize: string, quantity: number) => Promise<void>;
   clearCart: () => void;
   totalItems: number;
   totalPrice: number;
@@ -18,45 +18,44 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [items, setItems] = useState<CartItem[]>([]);
 
-  const addToCart = async (product: Product, quantity: number = 1): Promise<boolean> => {
+  const addToCart = async (product: Product, selectedColor: string, selectedSize: string, quantity: number = 1): Promise<boolean> => {
     try {
-      // Verificar estoque atual no banco
-      const { data: currentProduct, error } = await supabase
-        .from("products")
-        .select("stock")
-        .eq("id", product.id)
-        .single();
+      // Buscar a variante específica
+      const variant = product.variants.find(
+        v => v.color === selectedColor && v.size === selectedSize
+      );
 
-      if (error) throw error;
-
-      if (!currentProduct) {
+      if (!variant) {
         toast({
-          title: "Produto não encontrado",
-          description: "Este produto não está mais disponível.",
+          title: "Variante não encontrada",
+          description: "Esta combinação de cor e tamanho não está disponível.",
           variant: "destructive",
         });
         return false;
       }
 
-      const existingItem = items.find((item) => item.id === product.id);
+      // Verificar estoque da variante
+      const existingItem = items.find(
+        (item) => item.id === product.id && 
+                  item.selectedColor === selectedColor && 
+                  item.selectedSize === selectedSize
+      );
       const currentCartQuantity = existingItem ? existingItem.quantity : 0;
       const totalQuantity = currentCartQuantity + quantity;
 
-      // Verificar se há estoque suficiente
-      if (currentProduct.stock < totalQuantity) {
+      if (variant.stock < totalQuantity) {
         toast({
           title: "Estoque insuficiente",
-          description: `Apenas ${currentProduct.stock} unidade(s) disponível(is). Você já tem ${currentCartQuantity} no carrinho.`,
+          description: `Apenas ${variant.stock} unidade(s) disponível(is) para ${selectedColor} - ${selectedSize}. Você já tem ${currentCartQuantity} no carrinho.`,
           variant: "destructive",
         });
         return false;
       }
 
-      // Verificar se o estoque acabou
-      if (currentProduct.stock === 0) {
+      if (variant.stock === 0) {
         toast({
           title: "Produto sem estoque",
-          description: "Este produto está temporariamente indisponível.",
+          description: `Esta variante (${selectedColor} - ${selectedSize}) está temporariamente indisponível.`,
           variant: "destructive",
         });
         return false;
@@ -66,10 +65,12 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         if (existingItem) {
           toast({
             title: "Quantidade atualizada",
-            description: `${product.name} atualizado no carrinho.`,
+            description: `${product.name} (${selectedColor} - ${selectedSize}) atualizado no carrinho.`,
           });
           return currentItems.map((item) =>
-            item.id === product.id
+            item.id === product.id && 
+            item.selectedColor === selectedColor && 
+            item.selectedSize === selectedSize
               ? { ...item, quantity: totalQuantity }
               : item
           );
@@ -77,9 +78,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         
         toast({
           title: "Adicionado ao carrinho",
-          description: `${product.name} foi adicionado ao carrinho.`,
+          description: `${product.name} (${selectedColor} - ${selectedSize}) foi adicionado ao carrinho.`,
         });
-        return [...currentItems, { ...product, quantity }];
+        return [...currentItems, { ...product, quantity, selectedColor, selectedSize }];
       });
 
       return true;
@@ -94,17 +95,21 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const removeFromCart = (productId: string) => {
-    setItems((currentItems) => currentItems.filter((item) => item.id !== productId));
+  const removeFromCart = (productId: string, selectedColor: string, selectedSize: string) => {
+    setItems((currentItems) => currentItems.filter(
+      (item) => !(item.id === productId && 
+                  item.selectedColor === selectedColor && 
+                  item.selectedSize === selectedSize)
+    ));
     toast({
       title: "Removido do carrinho",
       description: "Produto removido com sucesso.",
     });
   };
 
-  const updateQuantity = async (productId: string, quantity: number) => {
+  const updateQuantity = async (productId: string, selectedColor: string, selectedSize: string, quantity: number) => {
     if (quantity <= 0) {
-      removeFromCart(productId);
+      removeFromCart(productId, selectedColor, selectedSize);
       return;
     }
 
@@ -112,7 +117,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       // Verificar estoque atual no banco
       const { data: currentProduct, error } = await supabase
         .from("products")
-        .select("stock")
+        .select("variants")
         .eq("id", productId)
         .single();
 
@@ -127,11 +132,25 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
+      const variants = (currentProduct.variants as any as ProductVariant[]) || [];
+      const variant = variants.find(
+        v => v.color === selectedColor && v.size === selectedSize
+      );
+
+      if (!variant) {
+        toast({
+          title: "Variante não encontrada",
+          description: "Esta combinação de cor e tamanho não está mais disponível.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Verificar se há estoque suficiente
-      if (currentProduct.stock < quantity) {
+      if (variant.stock < quantity) {
         toast({
           title: "Estoque insuficiente",
-          description: `Apenas ${currentProduct.stock} unidade(s) disponível(is).`,
+          description: `Apenas ${variant.stock} unidade(s) disponível(is) para ${selectedColor} - ${selectedSize}.`,
           variant: "destructive",
         });
         return;
@@ -139,7 +158,11 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
       setItems((currentItems) =>
         currentItems.map((item) =>
-          item.id === productId ? { ...item, quantity } : item
+          item.id === productId && 
+          item.selectedColor === selectedColor && 
+          item.selectedSize === selectedSize
+            ? { ...item, quantity }
+            : item
         )
       );
     } catch (error) {

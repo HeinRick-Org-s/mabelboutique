@@ -40,7 +40,7 @@ export const CartSheet = () => {
               <div className="flex-1 overflow-y-auto space-y-4 pr-2">
                 {items.map((item) => (
                   <div
-                    key={item.id}
+                    key={`${item.id}-${item.selectedColor}-${item.selectedSize}`}
                     className="flex gap-4 pb-4 border-b border-border"
                   >
                     <img
@@ -51,6 +51,9 @@ export const CartSheet = () => {
                     <div className="flex-1">
                       <h4 className="font-playfair font-semibold">{item.name}</h4>
                       <p className="text-sm text-muted-foreground">{item.category}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        <span className="font-medium">{item.selectedColor}</span> - <span className="font-medium">{item.selectedSize}</span>
+                      </p>
                       <p className="font-inter font-medium text-primary mt-1">
                         {item.price}
                       </p>
@@ -59,7 +62,7 @@ export const CartSheet = () => {
                           variant="outline"
                           size="icon"
                           className="h-7 w-7"
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          onClick={() => updateQuantity(item.id, item.selectedColor, item.selectedSize, item.quantity - 1)}
                         >
                           <Minus className="h-3 w-3" />
                         </Button>
@@ -68,7 +71,7 @@ export const CartSheet = () => {
                           variant="outline"
                           size="icon"
                           className="h-7 w-7"
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          onClick={() => updateQuantity(item.id, item.selectedColor, item.selectedSize, item.quantity + 1)}
                         >
                           <Plus className="h-3 w-3" />
                         </Button>
@@ -76,7 +79,7 @@ export const CartSheet = () => {
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7 ml-auto"
-                          onClick={() => removeFromCart(item.id)}
+                          onClick={() => removeFromCart(item.id, item.selectedColor, item.selectedSize)}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
