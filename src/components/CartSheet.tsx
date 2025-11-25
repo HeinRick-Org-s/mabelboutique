@@ -25,11 +25,11 @@ export const CartSheet = () => {
           )}
         </Button>
       </SheetTrigger>
-      <SheetContent className="w-full sm:max-w-lg">
+      <SheetContent className="w-full sm:max-w-lg flex flex-col">
         <SheetHeader>
           <SheetTitle className="font-playfair text-2xl">Sua Sacola</SheetTitle>
         </SheetHeader>
-        <div className="flex flex-col h-full pt-6">
+        <div className="flex flex-col flex-1 pt-6 min-h-0">
           {items.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center">
               <ShoppingBag className="h-16 w-16 text-muted-foreground mb-4" />
@@ -85,7 +85,7 @@ export const CartSheet = () => {
                   </div>
                 ))}
               </div>
-              <div className="pt-4 space-y-4 border-t border-border">
+              <div className="pt-4 pb-6 space-y-4 border-t border-border mt-auto shrink-0">
                 <div className="flex justify-between font-inter text-lg">
                   <span className="font-semibold">Total:</span>
                   <span className="font-bold text-primary">
