@@ -14,6 +14,170 @@ export type Database = {
   }
   public: {
     Tables: {
+      coupons: {
+        Row: {
+          code: string
+          created_at: string
+          discount_type: string
+          discount_value: number
+          expires_at: string
+          id: string
+          is_active: boolean
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          discount_type: string
+          discount_value: number
+          expires_at: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          discount_type?: string
+          discount_value?: number
+          expires_at?: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      order_items: {
+        Row: {
+          created_at: string
+          id: string
+          order_id: string
+          product_id: string
+          product_image: string
+          product_name: string
+          product_price: number
+          quantity: number
+          selected_color: string
+          selected_size: string
+          subtotal: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_id: string
+          product_id: string
+          product_image: string
+          product_name: string
+          product_price: number
+          quantity: number
+          selected_color: string
+          selected_size: string
+          subtotal: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_id?: string
+          product_id?: string
+          product_image?: string
+          product_name?: string
+          product_price?: number
+          quantity?: number
+          selected_color?: string
+          selected_size?: string
+          subtotal?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          coupon_code: string | null
+          created_at: string
+          customer_email: string
+          customer_name: string
+          customer_phone: string
+          customer_whatsapp: string | null
+          delivery_days: number | null
+          delivery_type: string
+          discount_amount: number
+          id: string
+          order_number: string
+          payment_method: string
+          shipping_cep: string
+          shipping_city: string
+          shipping_complement: string | null
+          shipping_cost: number
+          shipping_neighborhood: string
+          shipping_number: string
+          shipping_state: string
+          shipping_street: string
+          status: string
+          subtotal: number
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          coupon_code?: string | null
+          created_at?: string
+          customer_email: string
+          customer_name: string
+          customer_phone: string
+          customer_whatsapp?: string | null
+          delivery_days?: number | null
+          delivery_type: string
+          discount_amount?: number
+          id?: string
+          order_number: string
+          payment_method: string
+          shipping_cep: string
+          shipping_city: string
+          shipping_complement?: string | null
+          shipping_cost?: number
+          shipping_neighborhood: string
+          shipping_number: string
+          shipping_state: string
+          shipping_street: string
+          status?: string
+          subtotal: number
+          total: number
+          updated_at?: string
+        }
+        Update: {
+          coupon_code?: string | null
+          created_at?: string
+          customer_email?: string
+          customer_name?: string
+          customer_phone?: string
+          customer_whatsapp?: string | null
+          delivery_days?: number | null
+          delivery_type?: string
+          discount_amount?: number
+          id?: string
+          order_number?: string
+          payment_method?: string
+          shipping_cep?: string
+          shipping_city?: string
+          shipping_complement?: string | null
+          shipping_cost?: number
+          shipping_neighborhood?: string
+          shipping_number?: string
+          shipping_state?: string
+          shipping_street?: string
+          status?: string
+          subtotal?: number
+          total?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           category: string
@@ -88,6 +252,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_order_number: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
