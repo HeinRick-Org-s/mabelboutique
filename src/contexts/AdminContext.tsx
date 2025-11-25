@@ -48,29 +48,40 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
+    let mounted = true;
+
     // Configurar listener de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
+        if (!mounted) return;
+
         if (session?.user) {
-          const isAdmin = await checkAdminRole(session.user.id);
-          setIsAuthenticated(isAdmin);
-          setUser(isAdmin ? session.user : null);
-          if (isAdmin) {
-            resetInactivityTimer();
-          }
+          // Defer async operations with setTimeout
+          setTimeout(async () => {
+            if (!mounted) return;
+            const isAdmin = await checkAdminRole(session.user.id);
+            setIsAuthenticated(isAdmin);
+            setUser(isAdmin ? session.user : null);
+            setIsLoading(false);
+            if (isAdmin) {
+              resetInactivityTimer();
+            }
+          }, 0);
         } else {
           setIsAuthenticated(false);
           setUser(null);
+          setIsLoading(false);
           if (inactivityTimer) {
             clearTimeout(inactivityTimer);
           }
         }
-        setIsLoading(false);
       }
     );
 
     // Verificar sessão existente
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!mounted) return;
+      
       if (session?.user) {
         const isAdmin = await checkAdminRole(session.user.id);
         setIsAuthenticated(isAdmin);
@@ -95,6 +106,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
       if (inactivityTimer) {
         clearTimeout(inactivityTimer);
@@ -103,7 +115,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
         window.removeEventListener(event, handleActivity);
       });
     };
-  }, [isAuthenticated]);
+  }, []);
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
