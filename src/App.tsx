@@ -16,6 +16,7 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import ProductsManagement from "./pages/admin/ProductsManagement";
 import OrdersManagement from "./pages/admin/OrdersManagement";
 import CouponsManagement from "./pages/admin/CouponsManagement";
+import Settings from "./pages/admin/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -76,6 +77,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <CouponsManagement />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/settings"
+                element={
+                  <ProtectedRoute>
+                    <Settings />
                   </ProtectedRoute>
                 }
               />

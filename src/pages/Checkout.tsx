@@ -28,6 +28,7 @@ interface Coupon {
 
 const Checkout = () => {
   const [paymentMethod, setPaymentMethod] = useState("credit-card");
+  const [deliveryMethod, setDeliveryMethod] = useState<"pickup" | "delivery">("delivery");
   const [deliveryType, setDeliveryType] = useState("");
   const [cep, setCep] = useState("");
   const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
@@ -47,20 +48,31 @@ const Checkout = () => {
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [loadingCoupon, setLoadingCoupon] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [storeAddress, setStoreAddress] = useState<any>(null);
   
   const { items, totalPrice, clearCart, updateQuantity } = useCart();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (cep.length === 9) {
+    loadStoreAddress();
+  }, []);
+
+  useEffect(() => {
+    if (deliveryMethod === "delivery" && cep.length === 9) {
+      fetchAddressFromCep();
       calculateShipping();
+    } else if (deliveryMethod === "pickup") {
+      setShippingOptions([]);
+      setDeliveryType("");
+      setShippingCost(0);
+      setDeliveryDays(0);
     } else {
       setShippingOptions([]);
       setDeliveryType("");
       setShippingCost(0);
       setDeliveryDays(0);
     }
-  }, [cep]);
+  }, [cep, deliveryMethod]);
 
   useEffect(() => {
     if (deliveryType && shippingOptions.length > 0) {
@@ -72,33 +84,85 @@ const Checkout = () => {
     }
   }, [deliveryType, shippingOptions]);
 
+  const loadStoreAddress = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("store_settings")
+        .select("*")
+        .eq("id", "00000000-0000-0000-0000-000000000001")
+        .maybeSingle();
+
+      if (error) throw error;
+      setStoreAddress(data);
+    } catch (error) {
+      console.error("Erro ao carregar endereço da loja:", error);
+    }
+  };
+
+  const fetchAddressFromCep = async () => {
+    try {
+      const cleanCep = cep.replace(/\D/g, "");
+      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+      const data = await response.json();
+
+      if (!data.erro) {
+        setAddress(data.logradouro || "");
+        setNeighborhood(data.bairro || "");
+        setCity(data.localidade || "");
+        setState(data.uf || "");
+      }
+    } catch (error) {
+      console.error("Erro ao buscar CEP:", error);
+    }
+  };
+
   const calculateShipping = async () => {
     setLoadingShipping(true);
     try {
-      const response = await fetch(
-        "https://eheiujcuirpciqffcltr.supabase.co/functions/v1/calculate-shipping",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
+      const cleanCep = cep.replace(/\D/g, "");
+      const cepNumber = parseInt(cleanCep);
+      const isSaoLuis = cepNumber >= 65000000 && cepNumber <= 65099999;
+
+      if (isSaoLuis) {
+        // São Luís: taxa fixa de R$ 5
+        const saoLuisOptions: ShippingOption[] = [
+          {
+            type: "standard",
+            name: "Entrega em São Luís",
+            price: 5,
+            days: 2,
+            service: "Local",
           },
-          body: JSON.stringify({ cepDestino: cep }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (data.success && data.options) {
-        setShippingOptions(data.options);
-        if (data.options.length > 0) {
-          setDeliveryType(data.options[0].type);
-        }
+        ];
+        setShippingOptions(saoLuisOptions);
+        setDeliveryType("standard");
       } else {
-        toast({
-          title: "Erro ao calcular frete",
-          description: "Não foi possível calcular o frete para este CEP.",
-          variant: "destructive",
-        });
+        // Outras cidades: usar edge function
+        const response = await fetch(
+          "https://eheiujcuirpciqffcltr.supabase.co/functions/v1/calculate-shipping",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ cepDestino: cep }),
+          }
+        );
+
+        const data = await response.json();
+
+        if (data.success && data.options) {
+          setShippingOptions(data.options);
+          if (data.options.length > 0) {
+            setDeliveryType(data.options[0].type);
+          }
+        } else {
+          toast({
+            title: "Erro ao calcular frete",
+            description: "Não foi possível calcular o frete para este CEP.",
+            variant: "destructive",
+          });
+        }
       }
     } catch (error) {
       console.error("Erro ao calcular frete:", error);
@@ -185,7 +249,7 @@ const Checkout = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email || !whatsapp || !name || !address || !number || !city || !state || !cep) {
+    if (!email || !whatsapp || !name) {
       toast({
         title: "Campos obrigatórios",
         description: "Por favor, preencha todos os campos obrigatórios.",
@@ -194,13 +258,24 @@ const Checkout = () => {
       return;
     }
 
-    if (!deliveryType || shippingOptions.length === 0) {
-      toast({
-        title: "Frete não calculado",
-        description: "Por favor, calcule o frete antes de finalizar o pedido.",
-        variant: "destructive",
-      });
-      return;
+    if (deliveryMethod === "delivery") {
+      if (!address || !number || !city || !state || !cep) {
+        toast({
+          title: "Campos obrigatórios",
+          description: "Por favor, preencha o endereço de entrega.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!deliveryType || shippingOptions.length === 0) {
+        toast({
+          title: "Frete não calculado",
+          description: "Por favor, calcule o frete antes de finalizar o pedido.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -249,15 +324,15 @@ const Checkout = () => {
           customer_email: email,
           customer_phone: whatsapp,
           customer_whatsapp: whatsapp,
-          shipping_cep: cep,
-          shipping_street: address,
-          shipping_number: number,
-          shipping_complement: complement || null,
-          shipping_neighborhood: neighborhood,
-          shipping_city: city,
-          shipping_state: state,
-          delivery_type: deliveryType,
-          delivery_days: deliveryDays,
+          shipping_cep: deliveryMethod === "pickup" ? "" : cep,
+          shipping_street: deliveryMethod === "pickup" ? "RETIRADA NA LOJA" : address,
+          shipping_number: deliveryMethod === "pickup" ? "" : number,
+          shipping_complement: deliveryMethod === "pickup" ? null : (complement || null),
+          shipping_neighborhood: deliveryMethod === "pickup" ? "" : neighborhood,
+          shipping_city: deliveryMethod === "pickup" ? "" : city,
+          shipping_state: deliveryMethod === "pickup" ? "" : state,
+          delivery_type: deliveryMethod === "pickup" ? "pickup" : deliveryType,
+          delivery_days: deliveryMethod === "pickup" ? 0 : deliveryDays,
           payment_method: paymentMethod,
           subtotal: subtotal,
           shipping_cost: shippingCost,
@@ -346,6 +421,17 @@ const Checkout = () => {
     setCep(formatCep(e.target.value));
   };
 
+  const formatWhatsApp = (value: string) => {
+    const numbers = value.replace(/\D/g, "");
+    if (numbers.length <= 2) return `(${numbers}`;
+    if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
+  };
+
+  const handleWhatsAppChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setWhatsapp(formatWhatsApp(e.target.value));
+  };
+
   if (items.length === 0) {
     return (
       <div className="min-h-screen bg-background">
@@ -414,22 +500,56 @@ const Checkout = () => {
                     type="tel" 
                     placeholder="(00) 00000-0000"
                     value={whatsapp}
-                    onChange={(e) => setWhatsapp(e.target.value)}
+                    onChange={handleWhatsAppChange}
+                    maxLength={15}
                     required 
                   />
                 </div>
               </div>
             </div>
 
-            {/* Endereço de Entrega */}
+            {/* Método de Entrega */}
             <div className="bg-card rounded-xl p-6 shadow-soft space-y-4">
               <div className="flex items-center gap-2 mb-4">
                 <Truck className="h-5 w-5 text-primary" />
                 <h2 className="font-playfair text-2xl font-bold text-foreground">
-                  Endereço de Entrega
+                  Método de Entrega
                 </h2>
               </div>
-              <div className="space-y-4">
+              <RadioGroup value={deliveryMethod} onValueChange={(value: "pickup" | "delivery") => setDeliveryMethod(value)}>
+                <div className="flex items-center space-x-3 p-4 border-2 border-border rounded-lg cursor-pointer hover:border-primary transition-colors">
+                  <RadioGroupItem value="delivery" id="delivery" />
+                  <Label htmlFor="delivery" className="flex-1 cursor-pointer">
+                    <p className="font-semibold">Entrega no endereço</p>
+                    <p className="text-sm text-muted-foreground">
+                      Receba em casa
+                    </p>
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-3 p-4 border-2 border-border rounded-lg cursor-pointer hover:border-primary transition-colors">
+                  <RadioGroupItem value="pickup" id="pickup" />
+                  <Label htmlFor="pickup" className="flex-1 cursor-pointer">
+                    <p className="font-semibold">Retirar na loja</p>
+                    <p className="text-sm text-muted-foreground">
+                      {storeAddress ? 
+                        `${storeAddress.store_address}, ${storeAddress.store_number} - ${storeAddress.store_neighborhood}, ${storeAddress.store_city}/${storeAddress.store_state}` 
+                        : "Endereço será configurado pelo admin"}
+                    </p>
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            {/* Endereço de Entrega */}
+            {deliveryMethod === "delivery" && (
+              <div className="bg-card rounded-xl p-6 shadow-soft space-y-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <Truck className="h-5 w-5 text-primary" />
+                  <h2 className="font-playfair text-2xl font-bold text-foreground">
+                    Endereço de Entrega
+                  </h2>
+                </div>
+                <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="cep">CEP *</Label>
                   <div className="flex gap-2">
@@ -461,6 +581,7 @@ const Checkout = () => {
                     id="address" 
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
+                    disabled
                     required 
                   />
                 </div>
@@ -489,6 +610,7 @@ const Checkout = () => {
                     id="neighborhood"
                     value={neighborhood}
                     onChange={(e) => setNeighborhood(e.target.value)}
+                    disabled
                     required 
                   />
                 </div>
@@ -499,6 +621,7 @@ const Checkout = () => {
                       id="city"
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
+                      disabled
                       required 
                     />
                   </div>
@@ -508,6 +631,7 @@ const Checkout = () => {
                       id="state"
                       value={state}
                       onChange={(e) => setState(e.target.value)}
+                      disabled
                       maxLength={2}
                       required 
                     />
@@ -515,9 +639,10 @@ const Checkout = () => {
                 </div>
               </div>
             </div>
+            )}
 
             {/* Tipo de Entrega */}
-            {shippingOptions.length > 0 && (
+            {deliveryMethod === "delivery" && shippingOptions.length > 0 && (
               <div className="bg-card rounded-xl p-6 shadow-soft space-y-4">
                 <h2 className="font-playfair text-2xl font-bold text-foreground mb-4">
                   Tipo de Entrega
@@ -630,7 +755,7 @@ const Checkout = () => {
               type="submit" 
               size="lg" 
               className="w-full h-14 text-lg font-semibold"
-              disabled={submitting || shippingOptions.length === 0}
+              disabled={submitting || (deliveryMethod === "delivery" && shippingOptions.length === 0)}
             >
               {submitting ? (
                 <>
