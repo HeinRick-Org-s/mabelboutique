@@ -122,7 +122,11 @@ const ProductDetail = () => {
     setQuantity(1); // Reset quantidade
   };
 
-  const productImages = product.images || [product.image];
+  // Organizar media: vídeo primeiro (se existir), depois imagens
+  const productMedia = [
+    ...(product.video ? [{ type: 'video' as const, url: product.video }] : []),
+    ...(product.images || [product.image]).map(img => ({ type: 'image' as const, url: img }))
+  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -139,7 +143,7 @@ const ProductDetail = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
           {/* Media Gallery */}
           <div className="space-y-6">
-            {/* Image Carousel */}
+            {/* Media Carousel (vídeo + imagens) */}
             <div className="relative">
               {totalStock === 0 && (
                 <div className="absolute top-4 left-4 z-10 bg-destructive text-destructive-foreground px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2">
@@ -149,33 +153,32 @@ const ProductDetail = () => {
               )}
               <Carousel className="w-full">
                 <CarouselContent>
-                  {productImages.map((img, index) => (
+                  {productMedia.map((media, index) => (
                     <CarouselItem key={index}>
                       <div className="aspect-square overflow-hidden rounded-2xl bg-muted shadow-soft">
-                        <img
-                          src={img}
-                          alt={`${product.name} - Imagem ${index + 1}`}
-                          className="w-full h-full object-cover"
-                        />
+                        {media.type === 'video' ? (
+                          <video
+                            src={media.url}
+                            controls
+                            className="w-full h-full object-cover"
+                          >
+                            Seu navegador não suporta vídeos.
+                          </video>
+                        ) : (
+                          <img
+                            src={media.url}
+                            alt={`${product.name} - Imagem ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        )}
                       </div>
                     </CarouselItem>
                   ))}
                 </CarouselContent>
+                <CarouselPrevious className="left-4" />
+                <CarouselNext className="right-4" />
               </Carousel>
             </div>
-
-            {/* Video Section */}
-            {product.video && (
-              <div className="relative aspect-video overflow-hidden rounded-2xl bg-muted shadow-soft">
-                <video
-                  src={product.video}
-                  controls
-                  className="w-full h-full object-cover"
-                >
-                  Seu navegador não suporta vídeos.
-                </video>
-              </div>
-            )}
           </div>
 
           {/* Product Info */}
@@ -187,20 +190,10 @@ const ProductDetail = () => {
               <h1 className="font-playfair text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-6">
                 {product.name}
               </h1>
-              <div className="flex items-center gap-4 flex-wrap">
-                <div className="inline-block bg-gradient-to-r from-primary/10 to-primary/5 px-6 py-4 rounded-xl border-2 border-primary/20">
-                  <p className="font-playfair text-3xl sm:text-4xl font-bold text-primary">
-                    {product.price}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Package className="h-4 w-4" />
-                  <span>
-                    {totalStock > 0 
-                      ? `${totalStock} unidade(s) disponível(is)` 
-                      : "Produto indisponível"}
-                  </span>
-                </div>
+              <div className="inline-block bg-gradient-to-r from-primary/10 to-primary/5 px-6 py-4 rounded-xl border-2 border-primary/20">
+                <p className="font-playfair text-3xl sm:text-4xl font-bold text-primary">
+                  {product.price}
+                </p>
               </div>
             </div>
 
