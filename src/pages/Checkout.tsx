@@ -281,7 +281,7 @@ const Checkout = () => {
     setSubmitting(true);
 
     try {
-      // Verificar estoque antes de criar o pedido
+      // Verificar estoque antes de processar pagamento
       for (const item of items) {
         const { data: product } = await supabase
           .from("products")
@@ -291,122 +291,88 @@ const Checkout = () => {
 
         if (product) {
           const variants = product.variants as any[];
-          const variant = variants.find(
-            (v: any) => v.color === item.selectedColor && v.size === item.selectedSize
-          );
-
-          if (!variant || variant.stock < item.quantity) {
-            toast({
-              title: "Estoque insuficiente",
-              description: `O produto "${item.name}" não tem estoque suficiente.`,
-              variant: "destructive",
-            });
-            setSubmitting(false);
-            return;
+          const colorVariant = variants.find((v: any) => v.color === item.selectedColor);
+          
+          if (colorVariant) {
+            const sizeVariant = colorVariant.sizes?.find((s: any) => s.size === item.selectedSize);
+            
+            if (!sizeVariant || sizeVariant.stock < item.quantity) {
+              toast({
+                title: "Estoque insuficiente",
+                description: `O produto "${item.name}" (${item.selectedColor} - ${item.selectedSize}) não tem estoque suficiente.`,
+                variant: "destructive",
+              });
+              setSubmitting(false);
+              return;
+            }
           }
         }
       }
 
-      // Gerar número do pedido
-      const { data: orderNumberData, error: orderNumberError } = await supabase
-        .rpc("generate_order_number");
+      // Preparar dados do pedido para enviar ao Stripe
+      const orderData = {
+        customer_phone: whatsapp,
+        customer_whatsapp: whatsapp,
+        shipping_cep: deliveryMethod === "pickup" ? "" : cep,
+        shipping_street: deliveryMethod === "pickup" ? "RETIRADA NA LOJA" : address,
+        shipping_number: deliveryMethod === "pickup" ? "" : number,
+        shipping_complement: deliveryMethod === "pickup" ? null : (complement || null),
+        shipping_neighborhood: deliveryMethod === "pickup" ? "" : neighborhood,
+        shipping_city: deliveryMethod === "pickup" ? "" : city,
+        shipping_state: deliveryMethod === "pickup" ? "" : state,
+        delivery_type: deliveryMethod === "pickup" ? "RETIRADA NA LOJA" : deliveryType,
+        delivery_days: deliveryMethod === "pickup" ? 0 : deliveryDays,
+        subtotal: subtotal,
+        shipping_cost: deliveryMethod === "pickup" ? 0 : shippingCost,
+        coupon_code: appliedCoupon?.code || null,
+        items: items.map(item => ({
+          productId: item.id,
+          name: item.name,
+          image: item.image,
+          price: item.price_value,
+          quantity: item.quantity,
+          selectedColor: item.selectedColor,
+          selectedSize: item.selectedSize,
+        })),
+      };
 
-      if (orderNumberError) throw orderNumberError;
-
-      const orderNumber = orderNumberData;
-
-      // Criar pedido
-      const { data: order, error: orderError } = await supabase
-        .from("orders")
-        .insert({
-          order_number: orderNumber,
-          customer_name: name,
-          customer_email: email,
-          customer_phone: whatsapp,
-          customer_whatsapp: whatsapp,
-          shipping_cep: deliveryMethod === "pickup" ? "" : cep,
-          shipping_street: deliveryMethod === "pickup" ? "RETIRADA NA LOJA" : address,
-          shipping_number: deliveryMethod === "pickup" ? "" : number,
-          shipping_complement: deliveryMethod === "pickup" ? null : (complement || null),
-          shipping_neighborhood: deliveryMethod === "pickup" ? "" : neighborhood,
-          shipping_city: deliveryMethod === "pickup" ? "" : city,
-          shipping_state: deliveryMethod === "pickup" ? "" : state,
-          delivery_type: deliveryMethod === "pickup" ? "pickup" : deliveryType,
-          delivery_days: deliveryMethod === "pickup" ? 0 : deliveryDays,
-          payment_method: paymentMethod,
-          subtotal: subtotal,
-          shipping_cost: shippingCost,
-          discount_amount: discount,
-          total: finalTotal,
-          coupon_code: appliedCoupon?.code || null,
-          status: "pending",
-        })
-        .select()
-        .single();
-
-      if (orderError) throw orderError;
-
-      // Criar itens do pedido
-      const orderItems = items.map((item) => ({
-        order_id: order.id,
-        product_id: item.id,
-        product_name: item.name,
-        product_image: item.image,
-        product_price: item.price_value,
-        selected_color: item.selectedColor,
-        selected_size: item.selectedSize,
-        quantity: item.quantity,
-        subtotal: item.price_value * item.quantity,
-      }));
-
-      const { error: itemsError } = await supabase
-        .from("order_items")
-        .insert(orderItems);
-
-      if (itemsError) throw itemsError;
-
-      // Atualizar estoque
-      for (const item of items) {
-        const { data: product } = await supabase
-          .from("products")
-          .select("variants")
-          .eq("id", item.id)
-          .single();
-
-        if (product) {
-          const variants = product.variants as any[];
-          const updatedVariants = variants.map((v: any) => {
-            if (v.color === item.selectedColor && v.size === item.selectedSize) {
-              return {
-                ...v,
-                stock: v.stock - item.quantity,
-              };
-            }
-            return v;
-          });
-
-          await supabase
-            .from("products")
-            .update({ variants: updatedVariants })
-            .eq("id", item.id);
+      // Criar sessão de checkout do Stripe
+      const { data, error } = await supabase.functions.invoke(
+        "create-stripe-checkout",
+        {
+          body: {
+            items: items.map(item => ({
+              name: item.name,
+              image: item.image,
+              price: item.price_value,
+              quantity: item.quantity,
+              selectedColor: item.selectedColor,
+              selectedSize: item.selectedSize,
+            })),
+            customerEmail: email,
+            customerName: name,
+            shippingCost: deliveryMethod === "pickup" ? 0 : shippingCost,
+            discountAmount: discount,
+            orderData,
+          },
         }
-      }
+      );
 
-      toast({
-        title: "Pedido realizado com sucesso!",
-        description: `Número do pedido: ${orderNumber}. Você receberá atualizações no email e WhatsApp cadastrados.`,
-      });
-      
-      clearCart();
-      navigate("/order-tracking");
+      if (error) throw error;
+
+      if (data?.url) {
+        // Redirecionar para página de pagamento do Stripe
+        window.location.href = data.url;
+      } else {
+        throw new Error("URL de checkout não retornada");
+      }
     } catch (error) {
-      console.error("Erro ao criar pedido:", error);
+      console.error("Erro ao processar pagamento:", error);
       toast({
-        title: "Erro ao processar pedido",
-        description: "Não foi possível finalizar o pedido. Tente novamente.",
+        title: "Erro ao processar pagamento",
+        description: "Não foi possível iniciar o processo de pagamento. Tente novamente.",
         variant: "destructive",
       });
-    } finally {
       setSubmitting(false);
     }
   };

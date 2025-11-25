@@ -3,22 +3,54 @@ import { LogOut, Package, ShoppingCart, DollarSign, Settings } from "lucide-reac
 import { Button } from "@/components/ui/button";
 import { useAdmin } from "@/contexts/AdminContext";
 import { useProducts } from "@/hooks/useProducts";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const AdminDashboard = () => {
   const { logout } = useAdmin();
   const navigate = useNavigate();
   const { data: products = [] } = useProducts();
 
+  // Buscar estatísticas de pedidos do Supabase
+  const { data: ordersStats } = useQuery({
+    queryKey: ["orders-stats"],
+    queryFn: async () => {
+      const { data: orders, error } = await supabase
+        .from("orders")
+        .select("status, total, created_at");
+
+      if (error) throw error;
+
+      const pendingOrders = orders?.filter(
+        (order) => order.status === "pending" || order.status === "processing"
+      ).length || 0;
+
+      // Vendas do mês atual
+      const now = new Date();
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthlySales = orders
+        ?.filter((order) => {
+          const orderDate = new Date(order.created_at);
+          return orderDate >= firstDayOfMonth && order.status !== "cancelled";
+        })
+        .reduce((sum, order) => sum + Number(order.total), 0) || 0;
+
+      return {
+        pendingOrders,
+        monthlySales,
+      };
+    },
+  });
+
   const handleLogout = async () => {
     await logout();
     navigate("/admin/login");
   };
 
-  // Mock data for orders and sales - will be integrated later
   const stats = {
     totalProducts: products.length,
-    pendingOrders: 12,
-    monthlySales: "R$ 45.890,00",
+    pendingOrders: ordersStats?.pendingOrders || 0,
+    monthlySales: `R$ ${(ordersStats?.monthlySales || 0).toFixed(2)}`,
   };
 
   return (
