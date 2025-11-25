@@ -131,45 +131,102 @@ serve(async (req) => {
       });
     }
 
-    // Criar sessão de checkout
-    const session = await stripe.checkout.sessions.create({
-      customer_email: customerEmail,
-      line_items: lineItems,
-      mode: "payment",
-      payment_method_types: selectedPaymentMethod === "pix" ? ["pix"] : ["card"],
-      success_url: `${req.headers.get("origin")}/order-tracking?code=${order.id}`,
-      cancel_url: `${req.headers.get("origin")}/checkout`,
-      metadata: {
-        order_id: order.id,
-        order_number: orderNumber,
-      },
-      // Aplicar desconto se houver
-      ...(discountAmount > 0 && {
-        discounts: [{
-          coupon: await createDiscountCoupon(stripe, discountAmount),
-        }],
-      }),
-    });
+    // Criar sessão de checkout do Stripe
+    // Nota: PIX precisa estar habilitado no dashboard do Stripe
+    // Se PIX não estiver disponível, usa cartão como fallback
+    try {
+      const paymentMethodTypes = selectedPaymentMethod === "pix" ? ["pix"] : ["card"];
+      
+      const session = await stripe.checkout.sessions.create({
+        customer_email: customerEmail,
+        line_items: lineItems,
+        mode: "payment",
+        payment_method_types: paymentMethodTypes,
+        success_url: `${req.headers.get("origin")}/order-tracking?code=${order.id}`,
+        cancel_url: `${req.headers.get("origin")}/checkout`,
+        metadata: {
+          order_id: order.id,
+          order_number: orderNumber,
+        },
+        // Aplicar desconto se houver
+        ...(discountAmount > 0 && {
+          discounts: [{
+            coupon: await createDiscountCoupon(stripe, discountAmount),
+          }],
+        }),
+      });
 
-    console.log("Stripe session created:", session.id);
+      console.log("Stripe session created:", session.id);
 
-    // Atualizar pedido com payment_intent_id
-    await supabase
-      .from("orders")
-      .update({ payment_intent_id: session.id })
-      .eq("id", order.id);
+      // Atualizar pedido com payment_intent_id
+      await supabase
+        .from("orders")
+        .update({ payment_intent_id: session.id })
+        .eq("id", order.id);
 
-    return new Response(
-      JSON.stringify({ 
-        sessionId: session.id,
-        url: session.url,
-        orderId: order.id,
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
+      return new Response(
+        JSON.stringify({ 
+          sessionId: session.id,
+          url: session.url,
+          orderId: order.id,
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
+    } catch (stripeError: any) {
+      // Se erro for relacionado ao PIX, tentar novamente com cartão
+      if (stripeError.message?.includes("pix") && selectedPaymentMethod === "pix") {
+        console.log("PIX not available, falling back to card");
+        
+        const session = await stripe.checkout.sessions.create({
+          customer_email: customerEmail,
+          line_items: lineItems,
+          mode: "payment",
+          payment_method_types: ["card"],
+          success_url: `${req.headers.get("origin")}/order-tracking?code=${order.id}`,
+          cancel_url: `${req.headers.get("origin")}/checkout`,
+          metadata: {
+            order_id: order.id,
+            order_number: orderNumber,
+          },
+          // Aplicar desconto se houver
+          ...(discountAmount > 0 && {
+            discounts: [{
+              coupon: await createDiscountCoupon(stripe, discountAmount),
+            }],
+          }),
+        });
+
+        console.log("Stripe session created with card fallback:", session.id);
+
+        // Atualizar pedido com payment_intent_id e método de pagamento
+        await supabase
+          .from("orders")
+          .update({ 
+            payment_intent_id: session.id,
+            payment_method: "card" // Atualizar método para card
+          })
+          .eq("id", order.id);
+
+        return new Response(
+          JSON.stringify({ 
+            sessionId: session.id,
+            url: session.url,
+            orderId: order.id,
+            warning: "PIX não disponível no momento. Redirecionando para pagamento com cartão.",
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          }
+        );
       }
-    );
+      
+      // Se não for erro de PIX, propagar o erro
+      throw stripeError;
+    }
   } catch (error: any) {
     console.error("Error creating checkout session:", error);
     return new Response(
