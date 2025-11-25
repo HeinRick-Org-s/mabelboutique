@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
 import Checkout from "./pages/Checkout";
+import OrderTracking from "./pages/OrderTracking";
 import AdminLogin from "./pages/admin/Login";
 import AdminDashboard from "./pages/admin/Dashboard";
 import ProductsManagement from "./pages/admin/ProductsManagement";
@@ -32,6 +33,7 @@ const App = () => (
               <Route path="/products" element={<Products />} />
               <Route path="/product/:id" element={<ProductDetail />} />
               <Route path="/checkout" element={<Checkout />} />
+              <Route path="/order-tracking" element={<OrderTracking />} />
               
               {/* Admin Routes */}
               <Route path="/admin/login" element={<AdminLogin />} />
