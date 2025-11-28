@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -67,6 +68,7 @@ interface OrderDetailsDialogProps {
 
 const statusOptions = [
   { value: "pending", label: "Pendente" },
+  { value: "paid", label: "Pago" },
   { value: "processing", label: "Processando" },
   { value: "shipped", label: "Enviado" },
   { value: "delivered", label: "Entregue" },
@@ -83,17 +85,27 @@ const paymentStatusLabels: Record<string, string> = {
 
 const OrderDetailsDialog = ({ order, open, onOpenChange, onStatusUpdated }: OrderDetailsDialogProps) => {
   const [status, setStatus] = useState(order?.status || "pending");
+  const [shippingTrackingCode, setShippingTrackingCode] = useState("");
   const [updating, setUpdating] = useState(false);
 
-  // Atualizar status local quando order mudar
   useEffect(() => {
     if (order) {
       setStatus(order.status);
+      setShippingTrackingCode("");
     }
   }, [order]);
 
   const handleUpdateStatus = async () => {
     if (!order) return;
+
+    if (status === "shipped" && !shippingTrackingCode.trim()) {
+      toast({
+        title: "Código de rastreamento obrigatório",
+        description: "Por favor, informe o código de rastreamento dos Correios para marcar como enviado.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setUpdating(true);
     try {
@@ -104,21 +116,40 @@ const OrderDetailsDialog = ({ order, open, onOpenChange, onStatusUpdated }: Orde
 
       if (error) throw error;
 
-      // Enviar notificação WhatsApp sobre atualização de status
-      try {
-        await supabase.functions.invoke("send-whatsapp-notification", {
-          body: {
-            customerPhone: order.customer_whatsapp || order.customer_phone,
-            customerName: order.customer_name,
-            orderNumber: order.order_number,
-            trackingCode: order.tracking_code || order.id,
-            messageType: "status_update",
-            newStatus: status,
-          },
-        });
-        console.log("WhatsApp notification sent for status update");
-      } catch (whatsappError) {
-        console.error("Error sending WhatsApp notification:", whatsappError);
+      if (status === "processing" || status === "shipped") {
+        try {
+          await supabase.functions.invoke("send-whatsapp-notification", {
+            body: {
+              customerPhone: order.customer_whatsapp || order.customer_phone,
+              customerName: order.customer_name,
+              orderNumber: order.order_number,
+              trackingCode: order.tracking_code || order.id,
+              messageType: "status_update",
+              newStatus: status,
+              shippingTrackingCode: status === "shipped" ? shippingTrackingCode : null,
+            },
+          });
+          console.log("WhatsApp notification sent for status update");
+        } catch (whatsappError) {
+          console.error("Error sending WhatsApp notification:", whatsappError);
+        }
+
+        try {
+          await supabase.functions.invoke("send-status-update-email", {
+            body: {
+              orderId: order.id,
+              customerEmail: order.customer_email,
+              customerName: order.customer_name,
+              orderNumber: order.order_number,
+              trackingCode: order.tracking_code || order.id,
+              newStatus: status,
+              shippingTrackingCode: status === "shipped" ? shippingTrackingCode : null,
+            },
+          });
+          console.log("Email notification sent for status update");
+        } catch (emailError) {
+          console.error("Error sending email notification:", emailError);
+        }
       }
 
       toast({
@@ -160,32 +191,50 @@ const OrderDetailsDialog = ({ order, open, onOpenChange, onStatusUpdated }: Orde
         </DialogHeader>
 
         <div className="space-y-6 mt-4">
-          {/* Status Update */}
           <div className="bg-muted/30 p-4 rounded-lg">
             <Label htmlFor="status" className="text-base font-semibold mb-2 block">
               Atualizar Status
             </Label>
-            <div className="flex gap-2">
-              <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger id="status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {statusOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button onClick={handleUpdateStatus} disabled={updating}>
-                {updating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Salvar
-              </Button>
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger id="status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statusOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button onClick={handleUpdateStatus} disabled={updating}>
+                  {updating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Salvar
+                </Button>
+              </div>
+              
+              {status === "shipped" && (
+                <div className="space-y-2">
+                  <Label htmlFor="shippingTrackingCode" className="text-sm">
+                    Código de Rastreamento dos Correios *
+                  </Label>
+                  <Input
+                    id="shippingTrackingCode"
+                    value={shippingTrackingCode}
+                    onChange={(e) => setShippingTrackingCode(e.target.value.toUpperCase())}
+                    placeholder="Ex: AA123456789BR"
+                    className="font-mono"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    O código será enviado para o cliente via email e WhatsApp.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Customer Info */}
           <div>
             <h3 className="font-playfair text-xl font-semibold mb-3">
               Informações do Cliente
@@ -212,7 +261,6 @@ const OrderDetailsDialog = ({ order, open, onOpenChange, onStatusUpdated }: Orde
             </div>
           </div>
 
-          {/* Shipping Info */}
           <div>
             <h3 className="font-playfair text-xl font-semibold mb-3">
               Informações de Entrega
@@ -252,7 +300,6 @@ const OrderDetailsDialog = ({ order, open, onOpenChange, onStatusUpdated }: Orde
             </div>
           </div>
 
-          {/* Order Items */}
           <div>
             <h3 className="font-playfair text-xl font-semibold mb-3">
               Itens do Pedido
@@ -288,7 +335,6 @@ const OrderDetailsDialog = ({ order, open, onOpenChange, onStatusUpdated }: Orde
             </div>
           </div>
 
-          {/* Payment Summary */}
           <div className="bg-muted/30 p-4 rounded-lg">
             <h3 className="font-playfair text-xl font-semibold mb-3">
               Resumo do Pagamento
