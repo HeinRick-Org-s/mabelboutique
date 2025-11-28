@@ -190,7 +190,7 @@ serve(async (req) => {
                 Dúvidas? Entre em contato conosco!
               </p>
               <p style="margin: 5px 0;">
-                <a href="https://wa.me/55989702420262" style="color: ${brandColors.primary}; text-decoration: none; font-weight: 600;">
+                <a href="https://wa.me/5598970242062" style="color: ${brandColors.primary}; text-decoration: none; font-weight: 600;">
                   📱 WhatsApp: (98) 7024-2062
                 </a>
               </p>

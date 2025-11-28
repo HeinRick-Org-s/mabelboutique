@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 
 const Footer = () => {
   const handleWhatsAppClick = () => {
-    window.open("https://wa.me/55989702420262", "_blank");
+    window.open("https://wa.me/5598970242062", "_blank");
   };
 
   return (

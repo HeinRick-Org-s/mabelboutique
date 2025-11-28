@@ -9,7 +9,7 @@ import { useProduct } from "@/hooks/useProducts";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "@/hooks/use-toast";
 
-const WHATSAPP_NUMBER = "55989702420262";
+const WHATSAPP_NUMBER = "5598970242062";
 
 const ProductDetail = () => {
   const { id } = useParams();

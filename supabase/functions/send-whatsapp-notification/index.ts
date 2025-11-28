@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 // Número da loja para envio (CallMeBot)
-const STORE_PHONE = "55989702420262";
+const STORE_PHONE = "5598970242062";
 
 interface WhatsAppRequest {
   customerPhone: string;
