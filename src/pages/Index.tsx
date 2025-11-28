@@ -3,6 +3,7 @@ import Hero from "@/components/Hero";
 import ProductGrid from "@/components/ProductGrid";
 import { FeaturedCarousel } from "@/components/FeaturedCarousel";
 import Footer from "@/components/Footer";
+import WhatsAppFloatButton from "@/components/WhatsAppFloatButton";
 
 const Index = () => {
   return (
@@ -16,6 +17,7 @@ const Index = () => {
         </div>
       </main>
       <Footer />
+      <WhatsAppFloatButton />
     </div>
   );
 };

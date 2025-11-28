@@ -9,6 +9,16 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Cores da marca Mabel Boutique
+const brandColors = {
+  primary: "#4a7c59", // Verde musgo
+  primaryDark: "#2d5f3f",
+  secondary: "#f5f5f5",
+  accent: "#e0f2e9",
+  text: "#333333",
+  textLight: "#666666",
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -40,16 +50,21 @@ serve(async (req) => {
 
     if (itemsError) throw itemsError;
 
-    const trackingUrl = `${req.headers.get("origin")}/order-tracking?code=${trackingCode}`;
+    const trackingUrl = `https://preview--mabel-modas.lovable.app/order-tracking?code=${trackingCode}`;
 
     const itemsHtml = items?.map(item => `
       <tr>
-        <td style="padding: 10px; border-bottom: 1px solid #eee;">
-          ${item.product_name}<br/>
-          <small style="color: #666;">Cor: ${item.selected_color} | Tamanho: ${item.selected_size}</small>
+        <td style="padding: 15px; border-bottom: 1px solid #eee;">
+          <div style="display: flex; align-items: center;">
+            <img src="${item.product_image}" alt="${item.product_name}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; margin-right: 15px;" />
+            <div>
+              <p style="margin: 0; font-weight: 600; color: ${brandColors.text};">${item.product_name}</p>
+              <p style="margin: 5px 0 0 0; font-size: 13px; color: ${brandColors.textLight};">Cor: ${item.selected_color} | Tamanho: ${item.selected_size}</p>
+            </div>
+          </div>
         </td>
-        <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">R$ ${item.product_price.toFixed(2)}</td>
+        <td style="padding: 15px; border-bottom: 1px solid #eee; text-align: center; color: ${brandColors.text};">${item.quantity}</td>
+        <td style="padding: 15px; border-bottom: 1px solid #eee; text-align: right; font-weight: 600; color: ${brandColors.primary};">R$ ${item.product_price.toFixed(2)}</td>
       </tr>
     `).join('');
 
@@ -58,47 +73,57 @@ serve(async (req) => {
       <html>
         <head>
           <meta charset="utf-8">
-          <title>Confirmação do Pedido - Mabel</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Confirmação do Pedido - Mabel Boutique</title>
         </head>
-        <body style="font-family: 'Arial', sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: linear-gradient(135deg, #4a7c59 0%, #2d5f3f 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 28px;">Mabel</h1>
-            <p style="color: #e0f2e9; margin: 10px 0 0 0;">Seu pedido foi confirmado!</p>
+        <body style="font-family: 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: ${brandColors.text}; max-width: 600px; margin: 0 auto; padding: 0; background-color: #f9f9f9;">
+          <!-- Header com Logo -->
+          <div style="background: linear-gradient(135deg, ${brandColors.primary} 0%, ${brandColors.primaryDark} 100%); padding: 40px 30px; text-align: center;">
+            <h1 style="color: white; margin: 0; font-size: 36px; font-weight: 300; letter-spacing: 3px;">Mabel Boutique</h1>
+            <p style="color: ${brandColors.accent}; margin: 15px 0 0 0; font-size: 16px; letter-spacing: 1px;">Moda Feminina de Alto Padrão</p>
           </div>
           
-          <div style="background: white; padding: 30px; border: 1px solid #eee; border-top: none;">
-            <p style="font-size: 16px; margin-bottom: 20px;">
-              Olá <strong>${order.customer_name}</strong>,
-            </p>
+          <!-- Conteúdo Principal -->
+          <div style="background: white; padding: 40px 30px;">
+            <!-- Mensagem de Boas-vindas -->
+            <div style="text-align: center; margin-bottom: 30px;">
+              <div style="font-size: 48px; margin-bottom: 15px;">✨</div>
+              <h2 style="color: ${brandColors.primary}; margin: 0 0 10px 0; font-size: 24px; font-weight: 600;">Pedido Confirmado!</h2>
+              <p style="color: ${brandColors.textLight}; margin: 0; font-size: 16px;">
+                Obrigada por escolher a Mabel Boutique, ${order.customer_name}!
+              </p>
+            </div>
             
-            <p style="margin-bottom: 20px;">
-              Seu pedido <strong>#${order.order_number}</strong> foi recebido e está sendo processado!
+            <p style="font-size: 16px; margin-bottom: 25px; color: ${brandColors.text};">
+              Seu pedido <strong style="color: ${brandColors.primary};">#${order.order_number}</strong> foi recebido e está sendo preparado com todo carinho!
             </p>
 
-            <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <h2 style="color: #4a7c59; font-size: 18px; margin-top: 0;">Código de Rastreamento</h2>
-              <p style="font-size: 24px; font-weight: bold; color: #2d5f3f; letter-spacing: 2px; margin: 10px 0;">
+            <!-- Código de Rastreamento -->
+            <div style="background: linear-gradient(135deg, ${brandColors.accent} 0%, #fff 100%); padding: 25px; border-radius: 12px; margin: 30px 0; border: 2px solid ${brandColors.primary}20; text-align: center;">
+              <p style="margin: 0 0 10px 0; font-size: 14px; color: ${brandColors.textLight}; text-transform: uppercase; letter-spacing: 1px;">Código de Rastreamento</p>
+              <p style="font-size: 32px; font-weight: bold; color: ${brandColors.primary}; letter-spacing: 4px; margin: 10px 0;">
                 ${trackingCode}
               </p>
-              <p style="font-size: 14px; color: #666; margin-bottom: 15px;">
+              <p style="font-size: 14px; color: ${brandColors.textLight}; margin: 15px 0;">
                 Use este código para acompanhar seu pedido
               </p>
               <a href="${trackingUrl}" 
-                 style="display: inline-block; background: #4a7c59; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">
-                Acompanhar Pedido
+                 style="display: inline-block; background: ${brandColors.primary}; color: white; padding: 14px 35px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; margin-top: 10px; letter-spacing: 0.5px;">
+                🔍 Acompanhar Pedido
               </a>
             </div>
 
-            <h3 style="color: #4a7c59; border-bottom: 2px solid #4a7c59; padding-bottom: 10px; margin-top: 30px;">
-              Resumo do Pedido
+            <!-- Resumo do Pedido -->
+            <h3 style="color: ${brandColors.primary}; border-bottom: 2px solid ${brandColors.primary}; padding-bottom: 12px; margin-top: 35px; font-size: 18px;">
+              📦 Resumo do Pedido
             </h3>
             
             <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
               <thead>
-                <tr style="background: #f5f5f5;">
-                  <th style="padding: 10px; text-align: left; border-bottom: 2px solid #4a7c59;">Produto</th>
-                  <th style="padding: 10px; text-align: center; border-bottom: 2px solid #4a7c59;">Qtd</th>
-                  <th style="padding: 10px; text-align: right; border-bottom: 2px solid #4a7c59;">Preço</th>
+                <tr style="background: ${brandColors.secondary};">
+                  <th style="padding: 12px 15px; text-align: left; font-size: 13px; color: ${brandColors.textLight}; text-transform: uppercase; letter-spacing: 0.5px;">Produto</th>
+                  <th style="padding: 12px 15px; text-align: center; font-size: 13px; color: ${brandColors.textLight}; text-transform: uppercase; letter-spacing: 0.5px;">Qtd</th>
+                  <th style="padding: 12px 15px; text-align: right; font-size: 13px; color: ${brandColors.textLight}; text-transform: uppercase; letter-spacing: 0.5px;">Preço</th>
                 </tr>
               </thead>
               <tbody>
@@ -106,44 +131,84 @@ serve(async (req) => {
               </tbody>
             </table>
 
-            <div style="text-align: right; margin-top: 20px; padding-top: 20px; border-top: 2px solid #eee;">
-              <p style="margin: 5px 0;"><strong>Subtotal:</strong> R$ ${order.subtotal.toFixed(2)}</p>
-              ${order.discount_amount > 0 ? `<p style="margin: 5px 0; color: #4a7c59;"><strong>Desconto:</strong> -R$ ${order.discount_amount.toFixed(2)}</p>` : ''}
-              <p style="margin: 5px 0;"><strong>Frete:</strong> R$ ${order.shipping_cost.toFixed(2)}</p>
-              <p style="margin: 15px 0 0 0; font-size: 20px; color: #2d5f3f;">
-                <strong>Total:</strong> R$ ${order.total.toFixed(2)}
-              </p>
+            <!-- Totais -->
+            <div style="background: ${brandColors.secondary}; padding: 20px; border-radius: 8px; margin-top: 20px;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                <span style="color: ${brandColors.textLight};">Subtotal</span>
+                <span style="font-weight: 600;">R$ ${order.subtotal.toFixed(2)}</span>
+              </div>
+              ${order.discount_amount > 0 ? `
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px; color: ${brandColors.primary};">
+                  <span>Desconto</span>
+                  <span style="font-weight: 600;">-R$ ${order.discount_amount.toFixed(2)}</span>
+                </div>
+              ` : ''}
+              <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                <span style="color: ${brandColors.textLight};">Frete</span>
+                <span style="font-weight: 600;">${order.shipping_cost > 0 ? `R$ ${order.shipping_cost.toFixed(2)}` : 'Grátis'}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding-top: 15px; border-top: 2px solid ${brandColors.primary}20; margin-top: 10px;">
+                <span style="font-size: 18px; font-weight: bold; color: ${brandColors.text};">Total</span>
+                <span style="font-size: 22px; font-weight: bold; color: ${brandColors.primary};">R$ ${order.total.toFixed(2)}</span>
+              </div>
             </div>
 
+            <!-- Endereço de Entrega -->
             ${order.delivery_type !== "RETIRADA NA LOJA" ? `
-              <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin-top: 30px;">
-                <h4 style="color: #4a7c59; margin-top: 0;">Endereço de Entrega</h4>
-                <p style="margin: 5px 0;">
+              <div style="margin-top: 30px; padding: 20px; background: ${brandColors.secondary}; border-radius: 8px; border-left: 4px solid ${brandColors.primary};">
+                <h4 style="color: ${brandColors.primary}; margin: 0 0 15px 0; font-size: 16px;">
+                  🚚 Endereço de Entrega
+                </h4>
+                <p style="margin: 0; color: ${brandColors.text}; line-height: 1.8;">
                   ${order.shipping_street}, ${order.shipping_number}
                   ${order.shipping_complement ? ` - ${order.shipping_complement}` : ''}<br/>
                   ${order.shipping_neighborhood}<br/>
                   ${order.shipping_city} - ${order.shipping_state}<br/>
                   CEP: ${order.shipping_cep}
                 </p>
-                ${order.delivery_days ? `<p style="margin: 10px 0 0 0; color: #666;"><strong>Prazo de entrega:</strong> ${order.delivery_days} dias úteis</p>` : ''}
+                ${order.delivery_days ? `<p style="margin: 15px 0 0 0; color: ${brandColors.primary}; font-weight: 600;">⏱️ Prazo de entrega: ${order.delivery_days} dias úteis</p>` : ''}
               </div>
             ` : `
-              <div style="background: #fff3cd; padding: 15px; border-radius: 5px; margin-top: 30px; border-left: 4px solid #ffc107;">
-                <h4 style="color: #856404; margin-top: 0;">Retirada na Loja</h4>
-                <p style="margin: 5px 0; color: #856404;">
-                  Você optou por retirar o pedido na loja. Assim que estiver pronto para retirada, você será notificado.
+              <div style="background: #fff3cd; padding: 20px; border-radius: 8px; margin-top: 30px; border-left: 4px solid #ffc107;">
+                <h4 style="color: #856404; margin: 0 0 10px 0; font-size: 16px;">
+                  🏪 Retirada na Loja
+                </h4>
+                <p style="margin: 0; color: #856404;">
+                  Você optou por retirar o pedido na loja. Assim que estiver pronto, você será notificada!
                 </p>
               </div>
             `}
 
-            <p style="margin-top: 30px; font-size: 14px; color: #666;">
-              Se você tiver alguma dúvida, não hesite em nos contatar.
-            </p>
+            <!-- Contato -->
+            <div style="text-align: center; margin-top: 35px; padding-top: 25px; border-top: 1px solid #eee;">
+              <p style="color: ${brandColors.textLight}; font-size: 14px; margin-bottom: 15px;">
+                Dúvidas? Entre em contato conosco!
+              </p>
+              <p style="margin: 5px 0;">
+                <a href="https://wa.me/5598702420262" style="color: ${brandColors.primary}; text-decoration: none; font-weight: 600;">
+                  📱 WhatsApp: (98) 7024-2062
+                </a>
+              </p>
+              <p style="margin: 5px 0;">
+                <a href="mailto:mabelboutique2025@gmail.com" style="color: ${brandColors.primary}; text-decoration: none; font-weight: 600;">
+                  ✉️ mabelboutique2025@gmail.com
+                </a>
+              </p>
+              <p style="margin: 15px 0 0 0;">
+                <a href="https://instagram.com/_mabelboutique_" style="color: ${brandColors.primary}; text-decoration: none; font-weight: 600;">
+                  📸 @_mabelboutique_
+                </a>
+              </p>
+            </div>
           </div>
 
-          <div style="background: #f5f5f5; padding: 20px; text-align: center; border-radius: 0 0 10px 10px;">
-            <p style="margin: 0; font-size: 14px; color: #666;">
-              © ${new Date().getFullYear()} Mabel - Todos os direitos reservados
+          <!-- Footer -->
+          <div style="background: ${brandColors.primary}; padding: 25px; text-align: center;">
+            <p style="margin: 0; font-size: 14px; color: white; letter-spacing: 1px;">
+              © ${new Date().getFullYear()} Mabel Boutique
+            </p>
+            <p style="margin: 10px 0 0 0; font-size: 12px; color: ${brandColors.accent};">
+              Moda Feminina de Alto Padrão
             </p>
           </div>
         </body>
@@ -151,13 +216,30 @@ serve(async (req) => {
     `;
 
     const emailResponse = await resend.emails.send({
-      from: "Mabel <onboarding@resend.dev>",
+      from: "Mabel Boutique <onboarding@resend.dev>",
       to: [customerEmail],
-      subject: `Pedido Confirmado #${order.order_number} - Mabel`,
+      subject: `✨ Pedido Confirmado #${order.order_number} - Mabel Boutique`,
       html: emailHtml,
     });
 
     console.log("Email sent successfully:", emailResponse);
+
+    // Enviar notificação WhatsApp
+    try {
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+      await supabase.functions.invoke("send-whatsapp-notification", {
+        body: {
+          customerPhone: order.customer_whatsapp || order.customer_phone,
+          customerName: order.customer_name,
+          orderNumber: order.order_number,
+          trackingCode: trackingCode,
+          messageType: "order_confirmation",
+        },
+      });
+      console.log("WhatsApp notification sent");
+    } catch (whatsappError) {
+      console.error("Error sending WhatsApp notification:", whatsappError);
+    }
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,

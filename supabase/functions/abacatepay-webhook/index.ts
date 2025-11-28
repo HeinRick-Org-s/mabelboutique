@@ -189,7 +189,7 @@ serve(async (req) => {
 
       console.log("Stock updated");
 
-      // Enviar email de confirmação
+      // Enviar email de confirmação com o tracking_code correto
       try {
         const emailResponse = await supabase.functions.invoke("send-order-email", {
           body: {

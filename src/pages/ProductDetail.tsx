@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ShoppingBag, ChevronLeft, Loader2, Package, Minus, Plus } from "lucide-react";
+import { ShoppingBag, ChevronLeft, Loader2, Package, Minus, Plus, MessageCircle } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,8 @@ import {
 import { useProduct } from "@/hooks/useProducts";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "@/hooks/use-toast";
+
+const WHATSAPP_NUMBER = "5598702420262";
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -101,6 +103,13 @@ const ProductDetail = () => {
     if (success) {
       setQuantity(1);
     }
+  };
+
+  const handleWhatsAppContact = () => {
+    const productUrl = window.location.href;
+    const message = `Olá! Gostaria de saber mais sobre este produto:\n\n*${product.name}*\n${product.price}\n\nLink: ${productUrl}`;
+    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+    window.open(url, "_blank");
   };
 
   const handleQuantityChange = (newQuantity: number) => {
@@ -304,12 +313,23 @@ const ProductDetail = () => {
             {/* Add to Cart Button */}
             <Button
               size="lg"
-              className="w-full mb-6 h-14 text-lg font-semibold shadow-medium hover:shadow-hover transition-all"
+              className="w-full mb-4 h-14 text-lg font-semibold shadow-medium hover:shadow-hover transition-all"
               onClick={handleAddToCart}
               disabled={totalStock === 0 || !selectedColor || !selectedSize}
             >
               <ShoppingBag className="h-6 w-6 mr-3" />
               {totalStock === 0 ? "Produto Indisponível" : "Adicionar ao Carrinho"}
+            </Button>
+
+            {/* WhatsApp Contact Button */}
+            <Button
+              size="lg"
+              variant="outline"
+              className="w-full mb-6 h-14 text-lg font-semibold border-2 border-[#25D366] text-[#25D366] hover:bg-[#25D366] hover:text-white transition-all"
+              onClick={handleWhatsAppContact}
+            >
+              <MessageCircle className="h-6 w-6 mr-3" />
+              Tirar Dúvidas no WhatsApp
             </Button>
 
             {/* Additional Info */}

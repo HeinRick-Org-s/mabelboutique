@@ -1,4 +1,4 @@
-import { Menu, Search } from "lucide-react";
+import { Menu, Search, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -27,6 +27,9 @@ const Header = () => {
             <a href="/#featured" className="font-inter text-sm font-medium text-foreground hover:text-primary transition-colors">
               Destaques
             </a>
+            <Link to="/order-tracking" className="font-inter text-sm font-medium text-foreground hover:text-primary transition-colors">
+              Rastrear Pedido
+            </Link>
             <Link to="/" className="font-inter text-sm font-medium text-foreground hover:text-primary transition-colors">
               Sobre
             </Link>
@@ -41,6 +44,14 @@ const Header = () => {
               className="hover:bg-accent"
             >
               <Search className="h-5 w-5" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => navigate('/order-tracking')}
+              className="hover:bg-accent hidden sm:flex"
+            >
+              <Package className="h-5 w-5" />
             </Button>
             <CartSheet />
             <Button 
@@ -72,6 +83,13 @@ const Header = () => {
               >
                 Destaques
               </a>
+              <Link 
+                to="/order-tracking" 
+                className="font-inter text-sm font-medium text-foreground hover:text-primary transition-colors py-2"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Rastrear Pedido
+              </Link>
               <Link 
                 to="/" 
                 className="font-inter text-sm font-medium text-foreground hover:text-primary transition-colors py-2"

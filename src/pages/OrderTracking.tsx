@@ -46,37 +46,48 @@ interface Order {
 
 const OrderTracking = () => {
   const [searchParams] = useSearchParams();
-  const sessionId = searchParams.get("session_id");
   const codeFromUrl = searchParams.get("code");
   
   const [trackingCode, setTrackingCode] = useState(codeFromUrl || "");
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
-  const [loadingSession, setLoadingSession] = useState(false);
 
   useEffect(() => {
     const codeParam = searchParams.get("code");
 
     if (codeParam) {
-      // Se temos code na URL, é o order_id
-      fetchOrderById(codeParam);
+      // Tentar buscar pelo código (pode ser tracking_code ou order_id)
+      fetchOrderByCode(codeParam);
     }
   }, [searchParams]);
 
-  const fetchOrderById = async (orderId: string) => {
+  const fetchOrderByCode = async (code: string) => {
     setLoading(true);
     try {
       // Aguardar processamento do webhook (pode levar alguns segundos)
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Buscar order pelo ID
-      const { data: orderData, error: orderError } = await supabase
+      let orderData = null;
+
+      // Primeiro tenta por tracking_code
+      const { data: trackingData } = await supabase
         .from("orders")
         .select("*")
-        .eq("id", orderId)
-        .single();
+        .eq("tracking_code", code.toUpperCase())
+        .maybeSingle();
 
-      if (orderError) throw orderError;
+      if (trackingData) {
+        orderData = trackingData;
+      } else {
+        // Se não encontrou, tenta por ID
+        const { data: idData } = await supabase
+          .from("orders")
+          .select("*")
+          .eq("id", code)
+          .maybeSingle();
+
+        orderData = idData;
+      }
 
       if (!orderData) {
         toast({
@@ -96,11 +107,15 @@ const OrderTracking = () => {
       if (itemsError) throw itemsError;
 
       setOrder({ ...orderData, items: itemsData || [] });
-      setTrackingCode(orderData.tracking_code || orderId);
+      
+      // Atualizar o campo de tracking com o código correto
+      if (orderData.tracking_code) {
+        setTrackingCode(orderData.tracking_code);
+      }
 
       toast({
-        title: "Pagamento confirmado!",
-        description: "Seu pedido foi recebido com sucesso. Enviamos um email com os detalhes.",
+        title: "Pedido encontrado!",
+        description: `Pedido #${orderData.order_number}`,
       });
     } catch (error) {
       console.error("Erro ao buscar pedido:", error);
@@ -168,6 +183,11 @@ const OrderTracking = () => {
       if (itemsError) throw itemsError;
 
       setOrder({ ...orderData, items: items || [] });
+      
+      // Atualizar o campo de tracking com o código correto
+      if (orderData.tracking_code) {
+        setTrackingCode(orderData.tracking_code);
+      }
 
       toast({
         title: "Pedido encontrado!",
@@ -309,6 +329,16 @@ const OrderTracking = () => {
             {/* Order Status */}
             {order && (
               <div className="space-y-6">
+                {/* Tracking Code Display */}
+                {order.tracking_code && (
+                  <div className="bg-primary/10 border-2 border-primary/20 rounded-xl p-6 text-center">
+                    <p className="text-sm text-muted-foreground mb-2">Código de Rastreamento</p>
+                    <p className="text-3xl font-bold text-primary tracking-widest">
+                      {order.tracking_code}
+                    </p>
+                  </div>
+                )}
+
                 {/* Order Info */}
                 <div className="bg-card rounded-xl shadow-soft border border-border p-6">
                   <h2 className="font-playfair text-2xl font-bold text-foreground mb-4">
