@@ -27,7 +27,6 @@ interface Coupon {
 }
 
 const Checkout = () => {
-  const [paymentMethod, setPaymentMethod] = useState("credit-card");
   const [deliveryMethod, setDeliveryMethod] = useState<"pickup" | "delivery">("delivery");
   const [deliveryType, setDeliveryType] = useState("");
   const [cep, setCep] = useState("");
@@ -325,7 +324,7 @@ const Checkout = () => {
         }
       }
 
-      // Preparar dados do pedido para enviar ao Stripe
+      // Preparar dados do pedido para enviar ao AbacatePay
       const orderData = {
         customer_phone: whatsapp,
         customer_whatsapp: whatsapp,
@@ -352,12 +351,13 @@ const Checkout = () => {
         })),
       };
 
-      // Criar sessão de checkout do Stripe
+      // Criar cobrança no AbacatePay
       const { data, error } = await supabase.functions.invoke(
-        "create-stripe-checkout",
+        "create-abacatepay-checkout",
         {
           body: {
             items: items.map(item => ({
+              productId: item.id,
               name: item.name,
               image: item.image,
               price: item.price_value,
@@ -367,10 +367,10 @@ const Checkout = () => {
             })),
             customerEmail: email,
             customerName: name,
+            customerPhone: whatsapp,
             shippingCost: deliveryMethod === "pickup" ? 0 : shippingCost,
             discountAmount: discount,
             orderData,
-            paymentMethod,
           },
         }
       );
@@ -383,19 +383,10 @@ const Checkout = () => {
       console.log("Resposta da edge function:", data);
 
       if (!data?.url) {
-        throw new Error("URL de checkout não retornada");
+        throw new Error("URL de pagamento não retornada");
       }
 
-      // Mostrar aviso se PIX não estiver disponível
-      if (data.warning) {
-        toast({
-          title: "Aviso",
-          description: data.warning,
-          variant: "default",
-        });
-      }
-
-      // Redirecionar para página de pagamento do Stripe
+      // Redirecionar para página de pagamento do AbacatePay
       console.log("Redirecionando para:", data.url);
       window.location.href = data.url;
     } catch (error) {
@@ -731,31 +722,24 @@ const Checkout = () => {
                   Pagamento
                 </h2>
               </div>
-              <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
-                <div className="flex items-center space-x-3 p-4 border-2 border-border rounded-lg">
-                  <RadioGroupItem value="credit-card" id="credit-card" />
-                  <Label htmlFor="credit-card">Cartão de Crédito ou Débito</Label>
+              <div className="p-4 border-2 border-primary bg-primary/5 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                    <span className="text-lg">💠</span>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground">PIX</p>
+                    <p className="text-sm text-muted-foreground">Pagamento instantâneo</p>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-3 p-4 border-2 border-border rounded-lg">
-                  <RadioGroupItem value="pix" id="pix" />
-                  <Label htmlFor="pix">PIX</Label>
-                </div>
-              </RadioGroup>
+              </div>
 
               <div className="mt-4 p-4 bg-muted/50 rounded-lg">
-                {paymentMethod === "pix" ? (
-                  <p className="text-xs text-muted-foreground">
-                    Ao finalizar o pedido, você será redirecionada para o ambiente seguro da
-                    <span className="font-semibold"> Stripe</span> para pagar via <span className="font-semibold">PIX</span>
-                    , com QR Code e chave Pix gerados automaticamente.
-                  </p>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    Ao finalizar o pedido, você será redirecionada para o ambiente seguro da
-                    <span className="font-semibold"> Stripe</span> para pagar com
-                    <span className="font-semibold"> cartão de crédito ou débito</span>.
-                  </p>
-                )}
+                <p className="text-xs text-muted-foreground">
+                  Ao finalizar o pedido, você será redirecionada para o ambiente seguro da
+                  <span className="font-semibold"> AbacatePay</span> para pagar via <span className="font-semibold">PIX</span>
+                  , com QR Code gerado automaticamente.
+                </p>
               </div>
             </div>
 

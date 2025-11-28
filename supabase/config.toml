@@ -3,10 +3,10 @@ project_id = "eheiujcuirpciqffcltr"
 [functions.calculate-shipping]
 verify_jwt = false
 
-[functions.create-stripe-checkout]
+[functions.create-abacatepay-checkout]
 verify_jwt = false
 
-[functions.stripe-webhook]
+[functions.abacatepay-webhook]
 verify_jwt = false
 
 [functions.send-order-email]
