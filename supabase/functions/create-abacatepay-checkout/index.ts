@@ -97,11 +97,11 @@ serve(async (req) => {
     console.log("Itens do pedido criados com sucesso");
 
     // Preparar produtos para AbacatePay
-    // Valores em centavos
+    // Valores em centavos - Mostrando informações completas do produto
     const products = items.map((item: any) => ({
       externalId: item.productId,
-      name: `${item.name} - ${item.selectedColor}/${item.selectedSize}`,
-      description: `Cor: ${item.selectedColor} | Tamanho: ${item.selectedSize}`,
+      name: item.name,
+      description: `Cor: ${item.selectedColor} | Tamanho: ${item.selectedSize} | Qtd: ${item.quantity}`,
       quantity: item.quantity,
       price: Math.round(item.price * 100), // Converter para centavos
     }));

@@ -99,6 +99,8 @@ const OrdersManagement = () => {
     switch (status) {
       case "pending":
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
+      case "paid":
+        return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300";
       case "processing":
         return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300";
       case "shipped":
@@ -115,6 +117,7 @@ const OrdersManagement = () => {
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
       pending: "Pendente",
+      paid: "Pago",
       processing: "Processando",
       shipped: "Enviado",
       delivered: "Entregue",

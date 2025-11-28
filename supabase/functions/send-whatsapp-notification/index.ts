@@ -15,6 +15,7 @@ interface WhatsAppRequest {
   trackingCode: string;
   messageType: "order_confirmation" | "status_update";
   newStatus?: string;
+  shippingTrackingCode?: string | null;
 }
 
 serve(async (req) => {
@@ -23,10 +24,10 @@ serve(async (req) => {
   }
 
   try {
-    const { customerPhone, customerName, orderNumber, trackingCode, messageType, newStatus }: WhatsAppRequest =
+    const { customerPhone, customerName, orderNumber, trackingCode, messageType, newStatus, shippingTrackingCode }: WhatsAppRequest =
       await req.json();
 
-    console.log("Sending WhatsApp notification", { customerPhone, customerName, orderNumber, messageType });
+    console.log("Sending WhatsApp notification", { customerPhone, customerName, orderNumber, messageType, newStatus });
 
     // Formatar número do cliente (remover caracteres especiais)
     const cleanPhone = customerPhone.replace(/\D/g, "");
@@ -45,19 +46,48 @@ serve(async (req) => {
     } else if (messageType === "status_update") {
       const statusLabels: Record<string, string> = {
         pending: "Pendente",
+        paid: "Pago",
         processing: "Em Preparação",
         shipped: "Enviado",
         delivered: "Entregue",
         cancelled: "Cancelado",
       };
 
-      message =
-        `🛍️ *Mabel Boutique*\n\n` +
-        `Olá ${customerName}! 🌸\n\n` +
-        `Atualização do pedido *#${orderNumber}*:\n` +
-        `📦 Novo status: *${statusLabels[newStatus || ""] || newStatus}*\n\n` +
-        `Acompanhe seu pedido em:\nhttps://preview--mabel-modas.lovable.app/order-tracking?code=${trackingCode}\n\n` +
-        `Obrigada pela preferência! 💚`;
+      let statusMessage = `📦 Novo status: *${statusLabels[newStatus || ""] || newStatus}*`;
+      
+      // Mensagem específica para cada status
+      if (newStatus === "processing") {
+        message =
+          `🛍️ *Mabel Boutique*\n\n` +
+          `Olá ${customerName}! 🌸\n\n` +
+          `Seu pedido *#${orderNumber}* está sendo preparado com carinho! 🎁\n\n` +
+          `${statusMessage}\n\n` +
+          `Acompanhe seu pedido em:\nhttps://preview--mabel-modas.lovable.app/order-tracking?code=${trackingCode}\n\n` +
+          `Em breve você receberá atualizações sobre o envio. 💚`;
+      } else if (newStatus === "shipped") {
+        message =
+          `🛍️ *Mabel Boutique*\n\n` +
+          `Olá ${customerName}! 🌸\n\n` +
+          `Seu pedido *#${orderNumber}* foi enviado! 📦🚚\n\n` +
+          `${statusMessage}\n\n`;
+        
+        if (shippingTrackingCode) {
+          message += `📬 *Código de rastreamento dos Correios:*\n${shippingTrackingCode}\n\n`;
+          message += `Acompanhe nos Correios:\nhttps://rastreamento.correios.com.br/app/index.php\n\n`;
+        }
+        
+        message +=
+          `Acompanhe seu pedido em:\nhttps://preview--mabel-modas.lovable.app/order-tracking?code=${trackingCode}\n\n` +
+          `Obrigada pela preferência! 💚`;
+      } else {
+        message =
+          `🛍️ *Mabel Boutique*\n\n` +
+          `Olá ${customerName}! 🌸\n\n` +
+          `Atualização do pedido *#${orderNumber}*:\n` +
+          `${statusMessage}\n\n` +
+          `Acompanhe seu pedido em:\nhttps://preview--mabel-modas.lovable.app/order-tracking?code=${trackingCode}\n\n` +
+          `Obrigada pela preferência! 💚`;
+      }
     }
 
     // Usar a API gratuita CallMeBot para enviar WhatsApp
