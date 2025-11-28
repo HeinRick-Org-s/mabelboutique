@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -73,9 +73,24 @@ const statusOptions = [
   { value: "cancelled", label: "Cancelado" },
 ];
 
+const paymentStatusLabels: Record<string, string> = {
+  pending: "Pendente",
+  paid: "Pago",
+  failed: "Falhou",
+  refunded: "Reembolsado",
+  cancelled: "Cancelado",
+};
+
 const OrderDetailsDialog = ({ order, open, onOpenChange, onStatusUpdated }: OrderDetailsDialogProps) => {
   const [status, setStatus] = useState(order?.status || "pending");
   const [updating, setUpdating] = useState(false);
+
+  // Atualizar status local quando order mudar
+  useEffect(() => {
+    if (order) {
+      setStatus(order.status);
+    }
+  }, [order]);
 
   const handleUpdateStatus = async () => {
     if (!order) return;
@@ -88,6 +103,23 @@ const OrderDetailsDialog = ({ order, open, onOpenChange, onStatusUpdated }: Orde
         .eq("id", order.id);
 
       if (error) throw error;
+
+      // Enviar notificação WhatsApp sobre atualização de status
+      try {
+        await supabase.functions.invoke("send-whatsapp-notification", {
+          body: {
+            customerPhone: order.customer_whatsapp || order.customer_phone,
+            customerName: order.customer_name,
+            orderNumber: order.order_number,
+            trackingCode: order.tracking_code || order.id,
+            messageType: "status_update",
+            newStatus: status,
+          },
+        });
+        console.log("WhatsApp notification sent for status update");
+      } catch (whatsappError) {
+        console.error("Error sending WhatsApp notification:", whatsappError);
+      }
 
       toast({
         title: "Status atualizado",
@@ -109,6 +141,11 @@ const OrderDetailsDialog = ({ order, open, onOpenChange, onStatusUpdated }: Orde
   };
 
   if (!order) return null;
+
+  const getPaymentStatusLabel = (paymentStatus: string | null) => {
+    if (!paymentStatus) return "Não informado";
+    return paymentStatusLabels[paymentStatus] || paymentStatus;
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -286,13 +323,13 @@ const OrderDetailsDialog = ({ order, open, onOpenChange, onStatusUpdated }: Orde
               <div className="flex justify-between pt-2">
                 <span className="text-muted-foreground">Método de Pagamento</span>
                 <span className="font-semibold capitalize">
-                  {order.payment_method.replace("-", " ")}
+                  {order.payment_method === "pix" ? "PIX" : order.payment_method.replace("-", " ")}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Status do Pagamento</span>
-                <span className="font-semibold capitalize">
-                  {order.payment_status}
+                <span className="font-semibold">
+                  {getPaymentStatusLabel(order.payment_status)}
                 </span>
               </div>
               {order.tracking_code && (
