@@ -4,18 +4,12 @@ import { ShoppingBag, ChevronLeft, Loader2, Package, Minus, Plus, MessageCircle 
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { useProduct } from "@/hooks/useProducts";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "@/hooks/use-toast";
 
-const WHATSAPP_NUMBER = "5598702420262";
+const WHATSAPP_NUMBER = "+5598702420262";
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -28,22 +22,18 @@ const ProductDetail = () => {
   // Obter cores e tamanhos únicos das variantes
   const availableColors = useMemo(() => {
     if (!product) return [];
-    return Array.from(new Set(product.variants.map(v => v.color)));
+    return Array.from(new Set(product.variants.map((v) => v.color)));
   }, [product]);
 
   const availableSizes = useMemo(() => {
     if (!product || !selectedColor) return [];
-    return product.variants
-      .filter(v => v.color === selectedColor)
-      .map(v => v.size);
+    return product.variants.filter((v) => v.color === selectedColor).map((v) => v.size);
   }, [product, selectedColor]);
 
   // Obter estoque da variante selecionada
   const selectedVariantStock = useMemo(() => {
     if (!product || !selectedColor || !selectedSize) return 0;
-    const variant = product.variants.find(
-      v => v.color === selectedColor && v.size === selectedSize
-    );
+    const variant = product.variants.find((v) => v.color === selectedColor && v.size === selectedSize);
     return variant?.stock || 0;
   }, [product, selectedColor, selectedSize]);
 
@@ -70,9 +60,7 @@ const ProductDetail = () => {
       <div className="min-h-screen bg-background">
         <Header />
         <main className="container mx-auto px-4 py-20 text-center">
-          <h1 className="font-playfair text-3xl font-bold text-foreground mb-4">
-            Produto não encontrado
-          </h1>
+          <h1 className="font-playfair text-3xl font-bold text-foreground mb-4">Produto não encontrado</h1>
           <Link to="/products">
             <Button>Voltar para Produtos</Button>
           </Link>
@@ -133,8 +121,8 @@ const ProductDetail = () => {
 
   // Organizar media: vídeo primeiro (se existir), depois imagens
   const productMedia = [
-    ...(product.video ? [{ type: 'video' as const, url: product.video }] : []),
-    ...(product.images || [product.image]).map(img => ({ type: 'image' as const, url: img }))
+    ...(product.video ? [{ type: "video" as const, url: product.video }] : []),
+    ...(product.images || [product.image]).map((img) => ({ type: "image" as const, url: img })),
   ];
 
   return (
@@ -165,12 +153,8 @@ const ProductDetail = () => {
                   {productMedia.map((media, index) => (
                     <CarouselItem key={index}>
                       <div className="aspect-square overflow-hidden rounded-2xl bg-muted shadow-soft">
-                        {media.type === 'video' ? (
-                          <video
-                            src={media.url}
-                            controls
-                            className="w-full h-full object-cover"
-                          >
+                        {media.type === "video" ? (
+                          <video src={media.url} controls className="w-full h-full object-cover">
                             Seu navegador não suporta vídeos.
                           </video>
                         ) : (
@@ -200,27 +184,19 @@ const ProductDetail = () => {
                 {product.name}
               </h1>
               <div className="inline-block bg-gradient-to-r from-primary/10 to-primary/5 px-6 py-4 rounded-xl border-2 border-primary/20">
-                <p className="font-playfair text-3xl sm:text-4xl font-bold text-primary">
-                  {product.price}
-                </p>
+                <p className="font-playfair text-3xl sm:text-4xl font-bold text-primary">{product.price}</p>
               </div>
             </div>
 
             <div className="mb-8">
-              <h2 className="font-playfair text-2xl font-semibold text-foreground mb-4">
-                Descrição
-              </h2>
-              <p className="font-inter text-base text-muted-foreground leading-relaxed">
-                {product.description}
-              </p>
+              <h2 className="font-playfair text-2xl font-semibold text-foreground mb-4">Descrição</h2>
+              <p className="font-inter text-base text-muted-foreground leading-relaxed">{product.description}</p>
             </div>
 
             {/* Colors */}
             {availableColors.length > 0 && (
               <div className="mb-8">
-                <h3 className="font-playfair text-xl font-semibold text-foreground mb-4">
-                  Cores Disponíveis
-                </h3>
+                <h3 className="font-playfair text-xl font-semibold text-foreground mb-4">Cores Disponíveis</h3>
                 <div className="flex flex-wrap gap-3">
                   {availableColors.map((color) => (
                     <button
@@ -242,9 +218,7 @@ const ProductDetail = () => {
             {/* Sizes */}
             {selectedColor && availableSizes.length > 0 && (
               <div className="mb-8">
-                <h3 className="font-playfair text-xl font-semibold text-foreground mb-4">
-                  Tamanhos
-                </h3>
+                <h3 className="font-playfair text-xl font-semibold text-foreground mb-4">Tamanhos</h3>
                 <div className="flex flex-wrap gap-3">
                   {availableSizes.map((size) => (
                     <button
@@ -270,9 +244,7 @@ const ProductDetail = () => {
                   <Package className="h-4 w-4 text-muted-foreground" />
                   <span className="text-muted-foreground">
                     Estoque para {selectedColor} - {selectedSize}:{" "}
-                    <span className="font-semibold text-foreground">
-                      {selectedVariantStock} unidade(s)
-                    </span>
+                    <span className="font-semibold text-foreground">{selectedVariantStock} unidade(s)</span>
                   </span>
                 </div>
               </div>
@@ -281,9 +253,7 @@ const ProductDetail = () => {
             {/* Quantity Selector */}
             {selectedColor && selectedSize && selectedVariantStock > 0 && (
               <div className="mb-6">
-                <h3 className="font-playfair text-xl font-semibold text-foreground mb-4">
-                  Quantidade
-                </h3>
+                <h3 className="font-playfair text-xl font-semibold text-foreground mb-4">Quantidade</h3>
                 <div className="flex items-center gap-4">
                   <Button
                     variant="outline"
@@ -294,9 +264,7 @@ const ProductDetail = () => {
                   >
                     <Minus className="h-5 w-5" />
                   </Button>
-                  <span className="font-inter text-2xl font-semibold w-16 text-center">
-                    {quantity}
-                  </span>
+                  <span className="font-inter text-2xl font-semibold w-16 text-center">{quantity}</span>
                   <Button
                     variant="outline"
                     size="icon"
@@ -338,9 +306,7 @@ const ProductDetail = () => {
                 <h4 className="font-playfair text-lg font-semibold text-foreground mb-2 flex items-center gap-2">
                   <span className="text-primary">✓</span> Entrega
                 </h4>
-                <p className="font-inter text-sm text-muted-foreground">
-                  Frete grátis para compras acima de R$ 500,00
-                </p>
+                <p className="font-inter text-sm text-muted-foreground">Frete grátis para compras acima de R$ 500,00</p>
               </div>
               <div className="bg-secondary/50 p-6 rounded-xl">
                 <h4 className="font-playfair text-lg font-semibold text-foreground mb-2 flex items-center gap-2">
