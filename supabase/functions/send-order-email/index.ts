@@ -34,25 +34,20 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Buscar detalhes do pedido
-    const { data: order, error: orderError } = await supabase
-      .from("orders")
-      .select("*")
-      .eq("id", orderId)
-      .single();
+    const { data: order, error: orderError } = await supabase.from("orders").select("*").eq("id", orderId).single();
 
     if (orderError) throw orderError;
 
     // Buscar itens do pedido
-    const { data: items, error: itemsError } = await supabase
-      .from("order_items")
-      .select("*")
-      .eq("order_id", orderId);
+    const { data: items, error: itemsError } = await supabase.from("order_items").select("*").eq("order_id", orderId);
 
     if (itemsError) throw itemsError;
 
     const trackingUrl = `https://preview--mabel-modas.lovable.app/order-tracking?code=${trackingCode}`;
 
-    const itemsHtml = items?.map(item => `
+    const itemsHtml = items
+      ?.map(
+        (item) => `
       <tr>
         <td style="padding: 15px; border-bottom: 1px solid #eee;">
           <div style="display: flex; align-items: center;">
@@ -66,7 +61,9 @@ serve(async (req) => {
         <td style="padding: 15px; border-bottom: 1px solid #eee; text-align: center; color: ${brandColors.text};">${item.quantity}</td>
         <td style="padding: 15px; border-bottom: 1px solid #eee; text-align: right; font-weight: 600; color: ${brandColors.primary};">R$ ${item.product_price.toFixed(2)}</td>
       </tr>
-    `).join('');
+    `,
+      )
+      .join("");
 
     const emailHtml = `
       <!DOCTYPE html>
@@ -137,15 +134,19 @@ serve(async (req) => {
                 <span style="color: ${brandColors.textLight};">Subtotal</span>
                 <span style="font-weight: 600;">R$ ${order.subtotal.toFixed(2)}</span>
               </div>
-              ${order.discount_amount > 0 ? `
+              ${
+                order.discount_amount > 0
+                  ? `
                 <div style="display: flex; justify-content: space-between; margin-bottom: 8px; color: ${brandColors.primary};">
                   <span>Desconto</span>
                   <span style="font-weight: 600;">-R$ ${order.discount_amount.toFixed(2)}</span>
                 </div>
-              ` : ''}
+              `
+                  : ""
+              }
               <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
                 <span style="color: ${brandColors.textLight};">Frete</span>
-                <span style="font-weight: 600;">${order.shipping_cost > 0 ? `R$ ${order.shipping_cost.toFixed(2)}` : 'Grátis'}</span>
+                <span style="font-weight: 600;">${order.shipping_cost > 0 ? `R$ ${order.shipping_cost.toFixed(2)}` : "Grátis"}</span>
               </div>
               <div style="display: flex; justify-content: space-between; padding-top: 15px; border-top: 2px solid ${brandColors.primary}20; margin-top: 10px;">
                 <span style="font-size: 18px; font-weight: bold; color: ${brandColors.text};">Total</span>
@@ -154,21 +155,24 @@ serve(async (req) => {
             </div>
 
             <!-- Endereço de Entrega -->
-            ${order.delivery_type !== "RETIRADA NA LOJA" ? `
+            ${
+              order.delivery_type !== "RETIRADA NA LOJA"
+                ? `
               <div style="margin-top: 30px; padding: 20px; background: ${brandColors.secondary}; border-radius: 8px; border-left: 4px solid ${brandColors.primary};">
                 <h4 style="color: ${brandColors.primary}; margin: 0 0 15px 0; font-size: 16px;">
                   🚚 Endereço de Entrega
                 </h4>
                 <p style="margin: 0; color: ${brandColors.text}; line-height: 1.8;">
                   ${order.shipping_street}, ${order.shipping_number}
-                  ${order.shipping_complement ? ` - ${order.shipping_complement}` : ''}<br/>
+                  ${order.shipping_complement ? ` - ${order.shipping_complement}` : ""}<br/>
                   ${order.shipping_neighborhood}<br/>
                   ${order.shipping_city} - ${order.shipping_state}<br/>
                   CEP: ${order.shipping_cep}
                 </p>
-                ${order.delivery_days ? `<p style="margin: 15px 0 0 0; color: ${brandColors.primary}; font-weight: 600;">⏱️ Prazo de entrega: ${order.delivery_days} dias úteis</p>` : ''}
+                ${order.delivery_days ? `<p style="margin: 15px 0 0 0; color: ${brandColors.primary}; font-weight: 600;">⏱️ Prazo de entrega: ${order.delivery_days} dias úteis</p>` : ""}
               </div>
-            ` : `
+            `
+                : `
               <div style="background: #fff3cd; padding: 20px; border-radius: 8px; margin-top: 30px; border-left: 4px solid #ffc107;">
                 <h4 style="color: #856404; margin: 0 0 10px 0; font-size: 16px;">
                   🏪 Retirada na Loja
@@ -177,7 +181,8 @@ serve(async (req) => {
                   Você optou por retirar o pedido na loja. Assim que estiver pronto, você será notificada!
                 </p>
               </div>
-            `}
+            `
+            }
 
             <!-- Contato -->
             <div style="text-align: center; margin-top: 35px; padding-top: 25px; border-top: 1px solid #eee;">
@@ -185,7 +190,7 @@ serve(async (req) => {
                 Dúvidas? Entre em contato conosco!
               </p>
               <p style="margin: 5px 0;">
-                <a href="https://wa.me/5598702420262" style="color: ${brandColors.primary}; text-decoration: none; font-weight: 600;">
+                <a href="https://wa.me/55989702420262" style="color: ${brandColors.primary}; text-decoration: none; font-weight: 600;">
                   📱 WhatsApp: (98) 7024-2062
                 </a>
               </p>
@@ -247,12 +252,9 @@ serve(async (req) => {
     });
   } catch (error: any) {
     console.error("Error sending order email:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });

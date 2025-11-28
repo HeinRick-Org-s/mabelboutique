@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 // Número da loja para envio (CallMeBot)
-const STORE_PHONE = "5598702420262";
+const STORE_PHONE = "55989702420262";
 
 interface WhatsAppRequest {
   customerPhone: string;
@@ -23,7 +23,8 @@ serve(async (req) => {
   }
 
   try {
-    const { customerPhone, customerName, orderNumber, trackingCode, messageType, newStatus }: WhatsAppRequest = await req.json();
+    const { customerPhone, customerName, orderNumber, trackingCode, messageType, newStatus }: WhatsAppRequest =
+      await req.json();
 
     console.log("Sending WhatsApp notification", { customerPhone, customerName, orderNumber, messageType });
 
@@ -34,7 +35,8 @@ serve(async (req) => {
     let message = "";
 
     if (messageType === "order_confirmation") {
-      message = `🛍️ *Mabel Boutique*\n\n` +
+      message =
+        `🛍️ *Mabel Boutique*\n\n` +
         `Olá ${customerName}! 🌸\n\n` +
         `Seu pedido *#${orderNumber}* foi confirmado com sucesso! ✅\n\n` +
         `📦 Código de rastreamento: *${trackingCode}*\n\n` +
@@ -49,7 +51,8 @@ serve(async (req) => {
         cancelled: "Cancelado",
       };
 
-      message = `🛍️ *Mabel Boutique*\n\n` +
+      message =
+        `🛍️ *Mabel Boutique*\n\n` +
         `Olá ${customerName}! 🌸\n\n` +
         `Atualização do pedido *#${orderNumber}*:\n` +
         `📦 Novo status: *${statusLabels[newStatus || ""] || newStatus}*\n\n` +
@@ -72,39 +75,35 @@ serve(async (req) => {
       // Para usar CallMeBot, o destinatário precisa ter ativado o bot
       // Esta é uma simulação - em produção use uma API de WhatsApp Business
       const encodedMessage = encodeURIComponent(message);
-      
+
       // Log da mensagem que seria enviada
       console.log(`Would send to ${formattedPhone}: ${message}`);
-      
+
       // Para uma solução real, use:
       // - Twilio WhatsApp API
       // - MessageBird
       // - WhatsApp Business API
       // - Z-API
-      
     } catch (apiError) {
       console.error("Error sending WhatsApp:", apiError);
     }
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         message: "Notification queued",
         phone: formattedPhone,
       }),
       {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      },
     );
   } catch (error: any) {
     console.error("Error in WhatsApp notification:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });

@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 
 const Footer = () => {
   const handleWhatsAppClick = () => {
-    window.open("https://wa.me/5598702420262", "_blank");
+    window.open("https://wa.me/55989702420262", "_blank");
   };
 
   return (
@@ -23,17 +23,26 @@ const Footer = () => {
             <h4 className="font-inter font-semibold mb-4">Navegação</h4>
             <ul className="space-y-2 font-inter text-sm">
               <li>
-                <Link to="/products" className="text-primary-foreground/80 hover:text-primary-foreground transition-colors">
+                <Link
+                  to="/products"
+                  className="text-primary-foreground/80 hover:text-primary-foreground transition-colors"
+                >
                   Produtos
                 </Link>
               </li>
               <li>
-                <a href="/#featured" className="text-primary-foreground/80 hover:text-primary-foreground transition-colors">
+                <a
+                  href="/#featured"
+                  className="text-primary-foreground/80 hover:text-primary-foreground transition-colors"
+                >
                   Destaques
                 </a>
               </li>
               <li>
-                <Link to="/order-tracking" className="text-primary-foreground/80 hover:text-primary-foreground transition-colors">
+                <Link
+                  to="/order-tracking"
+                  className="text-primary-foreground/80 hover:text-primary-foreground transition-colors"
+                >
                   Rastrear Pedido
                 </Link>
               </li>
@@ -50,7 +59,7 @@ const Footer = () => {
             <h4 className="font-inter font-semibold mb-4">Atendimento</h4>
             <ul className="space-y-2 font-inter text-sm">
               <li>
-                <button 
+                <button
                   onClick={handleWhatsAppClick}
                   className="text-primary-foreground/80 hover:text-primary-foreground transition-colors"
                 >
@@ -58,8 +67,8 @@ const Footer = () => {
                 </button>
               </li>
               <li>
-                <a 
-                  href="mailto:mabelboutique2025@gmail.com" 
+                <a
+                  href="mailto:mabelboutique2025@gmail.com"
                   className="text-primary-foreground/80 hover:text-primary-foreground transition-colors"
                 >
                   mabelboutique2025@gmail.com
@@ -106,9 +115,7 @@ const Footer = () => {
                 <Mail className="h-5 w-5" />
               </a>
             </div>
-            <p className="mt-4 text-sm text-primary-foreground/80">
-              @_mabelboutique_
-            </p>
+            <p className="mt-4 text-sm text-primary-foreground/80">@_mabelboutique_</p>
           </div>
         </div>
 

@@ -1,6 +1,6 @@
 import { MessageCircle } from "lucide-react";
 
-const WHATSAPP_NUMBER = "5598702420262";
+const WHATSAPP_NUMBER = "55989702420262";
 const WHATSAPP_MESSAGE = "Olá! Gostaria de saber mais sobre os produtos da Mabel Boutique.";
 
 const WhatsAppFloatButton = () => {
