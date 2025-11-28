@@ -45,6 +45,7 @@ const Checkout = () => {
   const [state, setState] = useState("");
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [cpf, setCpf] = useState("");
   const [loadingCoupon, setLoadingCoupon] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [storeAddress, setStoreAddress] = useState<any>(null);
@@ -248,10 +249,21 @@ const Checkout = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email || !whatsapp || !name) {
+    if (!email || !whatsapp || !name || !cpf) {
       toast({
         title: "Campos obrigatórios",
         description: "Por favor, preencha todos os campos obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validar CPF (11 dígitos)
+    const cleanCpf = cpf.replace(/\D/g, "");
+    if (cleanCpf.length !== 11) {
+      toast({
+        title: "CPF inválido",
+        description: "Por favor, digite um CPF válido com 11 dígitos.",
         variant: "destructive",
       });
       return;
@@ -368,6 +380,7 @@ const Checkout = () => {
             customerEmail: email,
             customerName: name,
             customerPhone: whatsapp,
+            customerCpf: cpf.replace(/\D/g, ""),
             shippingCost: deliveryMethod === "pickup" ? 0 : shippingCost,
             discountAmount: discount,
             orderData,
@@ -491,6 +504,29 @@ const Checkout = () => {
                     value={whatsapp}
                     onChange={handleWhatsAppChange}
                     maxLength={15}
+                    required 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cpf">CPF *</Label>
+                  <Input 
+                    id="cpf" 
+                    type="text" 
+                    placeholder="000.000.000-00"
+                    value={cpf}
+                    onChange={(e) => {
+                      const numbers = e.target.value.replace(/\D/g, "");
+                      if (numbers.length <= 3) {
+                        setCpf(numbers);
+                      } else if (numbers.length <= 6) {
+                        setCpf(`${numbers.slice(0, 3)}.${numbers.slice(3)}`);
+                      } else if (numbers.length <= 9) {
+                        setCpf(`${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6)}`);
+                      } else {
+                        setCpf(`${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6, 9)}-${numbers.slice(9, 11)}`);
+                      }
+                    }}
+                    maxLength={14}
                     required 
                   />
                 </div>

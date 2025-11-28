@@ -17,6 +17,7 @@ serve(async (req) => {
       customerEmail,
       customerName,
       customerPhone,
+      customerCpf,
       shippingCost,
       discountAmount,
       orderData,
@@ -154,6 +155,7 @@ serve(async (req) => {
           name: customerName,
           email: customerEmail,
           cellphone: customerPhone || orderData.customer_phone,
+          taxId: customerCpf,
         },
         metadata: {
           order_id: order.id,
