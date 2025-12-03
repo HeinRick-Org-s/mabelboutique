@@ -28,7 +28,6 @@ interface Coupon {
 
 const Checkout = () => {
   const [deliveryMethod, setDeliveryMethod] = useState<"pickup" | "delivery">("delivery");
-  const [paymentMethod, setPaymentMethod] = useState("pix");
   const [deliveryType, setDeliveryType] = useState("");
   const [cep, setCep] = useState("");
   const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
@@ -47,10 +46,6 @@ const Checkout = () => {
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [cpf, setCpf] = useState("");
-  const [cardNumber, setCardNumber] = useState("");
-  const [cardHolderName, setCardHolderName] = useState("");
-  const [cardExpiry, setCardExpiry] = useState("");
-  const [cardCvv, setCardCvv] = useState("");
   const [loadingCoupon, setLoadingCoupon] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [storeAddress, setStoreAddress] = useState<any>(null);
@@ -274,20 +269,6 @@ const Checkout = () => {
       return;
     }
 
-    if (["credit_card", "debit_card"].includes(paymentMethod)) {
-      if (!cardNumber || !cardHolderName || !cardExpiry || !cardCvv) {
-        toast({
-          title: "Dados do cartão incompletos",
-          description: "Por favor, preencha todos os dados do cartão.",
-          variant: "destructive",
-        });
-        return;
-      }
-      // Futuramente, aqui você adicionaria a lógica para gerar o card_hash
-      // com a biblioteca do Pagar.me antes de enviar para o backend.
-      // Por agora, vamos simular o fluxo.
-    }
-
     if (deliveryMethod === "delivery") {
       if (!address || !number || !city || !state || !cep) {
         toast({
@@ -355,7 +336,7 @@ const Checkout = () => {
         }
       }
 
-      // Preparar dados do pedido para enviar ao AbacatePay
+      // Preparar dados do pedido
       const orderData = {
         customer_phone: whatsapp,
         customer_whatsapp: whatsapp,
@@ -382,10 +363,10 @@ const Checkout = () => {
         })),
       };
 
-      if (paymentMethod === "pix") {
-        // Lógica existente para PIX com AbacatePay
+      // Se for RETIRADA NA LOJA - finalizar direto sem pagamento online
+      if (deliveryMethod === "pickup") {
         const { data, error } = await supabase.functions.invoke(
-          "create-abacatepay-checkout",
+          "finalize-pickup-order",
           {
             body: {
               items: items.map(item => ({
@@ -401,7 +382,6 @@ const Checkout = () => {
               customerName: name,
               customerPhone: whatsapp,
               customerCpf: cpf.replace(/\D/g, ""),
-              shippingCost: deliveryMethod === "pickup" ? 0 : shippingCost,
               discountAmount: discount,
               orderData,
             },
@@ -409,31 +389,44 @@ const Checkout = () => {
         );
 
         if (error) throw error;
-        if (!data?.url) throw new Error("URL de pagamento não retornada");
+        if (!data?.orderId) throw new Error("Erro ao finalizar pedido");
 
-        window.location.href = data.url;
-
-      } else if (["credit_card", "debit_card"].includes(paymentMethod)) {
-        // Nova lógica para Pagar.me (Cartão de Crédito/Débito)
-        // Esta parte será implementada com o passo a passo abaixo
-        toast({
-          title: "Integração Pagar.me Pendente",
-          description: "A lógica de backend para pagamento com cartão ainda precisa ser criada.",
-        });
-        // Exemplo de como seria a chamada para a futura função:
-        /*
-        const { data, error } = await supabase.functions.invoke("create-pagarme-charge", {
-          body: {
-            paymentMethod,
-            cardHash: "card_hash_gerado_pelo_pagarme.js", // Importante!
-            // ...outros dados do pedido (items, customer, shipping, etc.)
-          }
-        });
-        if (error) throw error;
-        // Redirecionar para página de sucesso/erro
+        clearCart();
         navigate(`/order-tracking?code=${data.orderId}`);
-        */
+        return;
       }
+
+      // Se for ENTREGA - usar Mercado Pago
+      const { data, error } = await supabase.functions.invoke(
+        "create-mercadopago-checkout",
+        {
+          body: {
+            items: items.map(item => ({
+              productId: item.id,
+              name: item.name,
+              image: item.image,
+              price: item.price_value,
+              quantity: item.quantity,
+              selectedColor: item.selectedColor,
+              selectedSize: item.selectedSize,
+            })),
+            customerEmail: email,
+            customerName: name,
+            customerPhone: whatsapp,
+            customerCpf: cpf.replace(/\D/g, ""),
+            shippingCost: shippingCost,
+            discountAmount: discount,
+            orderData,
+          },
+        }
+      );
+
+      if (error) throw error;
+      if (!data?.url) throw new Error("URL de pagamento não retornada");
+
+      clearCart();
+      window.location.href = data.url;
+
     } catch (error) {
       console.error("Erro ao processar pagamento:", error);
       toast({
@@ -465,17 +458,6 @@ const Checkout = () => {
   const handleWhatsAppChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setWhatsapp(formatWhatsApp(e.target.value));
   };
-
-  const formatCardExpiry = (value: string) => {
-    const numbers = value.replace(/\D/g, "");
-    if (numbers.length <= 2) return numbers;
-    return `${numbers.slice(0, 2)}/${numbers.slice(2, 4)}`;
-  };
-
-  const handleCardExpiryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCardExpiry(formatCardExpiry(e.target.value));
-  };
-
 
   if (items.length === 0) {
     return (
@@ -793,90 +775,58 @@ const Checkout = () => {
               )}
             </div>
 
-            {/* Pagamento */}
-            <div className="bg-card rounded-xl p-6 shadow-soft space-y-4">
-              <div className="flex items-center gap-2 mb-4">
-                <CreditCard className="h-5 w-5 text-primary" />
-                <h2 className="font-playfair text-2xl font-bold text-foreground">
-                  Pagamento
-                </h2>
-              </div>
-
-              <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="space-y-3">
-                <Label htmlFor="pix" className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors ${paymentMethod === 'pix' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}>
-                  <RadioGroupItem value="pix" id="pix" />
-                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                    <span className="text-lg">💠</span>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-foreground">PIX</p>
-                    <p className="text-sm text-muted-foreground">Pagamento instantâneo</p>
-                  </div>
-                </Label>
-                <Label htmlFor="credit_card" className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors ${paymentMethod === 'credit_card' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}>
-                  <RadioGroupItem value="credit_card" id="credit_card" />
-                  <CreditCard className="h-6 w-6 text-primary" />
-                  <div>
-                    <p className="font-semibold text-foreground">Cartão de Crédito</p>
-                    <p className="text-sm text-muted-foreground">Pague em até 12x</p>
-                  </div>
-                </Label>
-                <Label htmlFor="debit_card" className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors ${paymentMethod === 'debit_card' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}>
-                  <RadioGroupItem value="debit_card" id="debit_card" />
-                  <Landmark className="h-6 w-6 text-primary" />
-                  <div>
-                    <p className="font-semibold text-foreground">Cartão de Débito</p>
-                    <p className="text-sm text-muted-foreground">Pagamento à vista</p>
-                  </div>
-                </Label>
-              </RadioGroup>
-
-              {/* Formulário do Cartão */}
-              {(paymentMethod === "credit_card" || paymentMethod === "debit_card") && (
-                <div className="space-y-4 pt-4 border-t border-border mt-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="card-number">Número do Cartão</Label>
-                    <Input id="card-number" placeholder="0000 0000 0000 0000" value={cardNumber} onChange={e => setCardNumber(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="card-holder">Nome no Cartão</Label>
-                    <Input id="card-holder" placeholder="Nome completo" value={cardHolderName} onChange={e => setCardHolderName(e.target.value)} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="card-expiry">Validade (MM/AA)</Label>
-                      <Input
-                        id="card-expiry"
-                        placeholder="MM/AA"
-                        value={cardExpiry}
-                        onChange={handleCardExpiryChange}
-                        maxLength={5}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="card-cvv">CVV</Label>
-                      <Input
-                        id="card-cvv"
-                        placeholder="123"
-                        value={cardCvv}
-                        onChange={e => setCardCvv(e.target.value)}
-                        maxLength={4}
-                      />
-                    </div>
-                  </div>
+            {/* Pagamento - só mostrar se for entrega */}
+            {deliveryMethod === "delivery" && (
+              <div className="bg-card rounded-xl p-6 shadow-soft space-y-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <CreditCard className="h-5 w-5 text-primary" />
+                  <h2 className="font-playfair text-2xl font-bold text-foreground">
+                    Pagamento
+                  </h2>
                 </div>
-              )}
 
-              {paymentMethod === 'pix' && (
-                <div className="mt-4 p-4 bg-muted/50 rounded-lg">
-                  <p className="text-xs text-muted-foreground">
-                    Ao finalizar o pedido, você será redirecionada para o ambiente seguro da
-                    <span className="font-semibold"> AbacatePay</span> para pagar via <span className="font-semibold">PIX</span>
-                    , com QR Code gerado automaticamente.
+                <div className="p-4 bg-muted/50 rounded-lg">
+                  <p className="text-sm text-muted-foreground">
+                    Ao finalizar o pedido, você será redirecionada para o ambiente seguro do
+                    <span className="font-semibold"> Mercado Pago</span> onde poderá escolher a forma de pagamento:
+                  </p>
+                  <ul className="mt-3 space-y-2 text-sm text-foreground">
+                    <li className="flex items-center gap-2">
+                      <span className="text-lg">💠</span>
+                      <span>PIX - Pagamento instantâneo</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CreditCard className="h-4 w-4 text-primary" />
+                      <span>Cartão de Crédito - Em até 12x</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Landmark className="h-4 w-4 text-primary" />
+                      <span>Cartão de Débito - À vista</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {/* Info para retirada */}
+            {deliveryMethod === "pickup" && (
+              <div className="bg-card rounded-xl p-6 shadow-soft space-y-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <Truck className="h-5 w-5 text-primary" />
+                  <h2 className="font-playfair text-2xl font-bold text-foreground">
+                    Retirada na Loja
+                  </h2>
+                </div>
+
+                <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                  <p className="text-sm text-green-700 dark:text-green-400">
+                    ✓ Ao finalizar, seu pedido será confirmado e você poderá retirá-lo na loja.
+                    <br />
+                    <span className="font-semibold">Pagamento será feito no momento da retirada.</span>
                   </p>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             <Button
               type="submit"

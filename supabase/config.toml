@@ -17,3 +17,12 @@ verify_jwt = false
 
 [functions.send-status-update-email]
 verify_jwt = false
+
+[functions.create-mercadopago-checkout]
+verify_jwt = false
+
+[functions.mercadopago-webhook]
+verify_jwt = false
+
+[functions.finalize-pickup-order]
+verify_jwt = false
