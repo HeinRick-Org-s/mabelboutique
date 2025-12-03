@@ -202,11 +202,10 @@ const ProductDetail = () => {
                     <button
                       key={color}
                       onClick={() => handleColorSelect(color)}
-                      className={`px-6 py-3 border-2 rounded-lg font-inter font-medium transition-all capitalize ${
-                        selectedColor === color
+                      className={`px-6 py-3 border-2 rounded-lg font-inter font-medium transition-all capitalize ${selectedColor === color
                           ? "border-primary bg-primary text-primary-foreground shadow-medium"
                           : "border-border hover:border-primary hover:shadow-soft"
-                      }`}
+                        }`}
                     >
                       {color}
                     </button>
@@ -224,11 +223,10 @@ const ProductDetail = () => {
                     <button
                       key={size}
                       onClick={() => setSelectedSize(size)}
-                      className={`px-6 py-3 border-2 rounded-lg font-inter font-medium transition-all ${
-                        selectedSize === size
+                      className={`px-6 py-3 border-2 rounded-lg font-inter font-medium transition-all ${selectedSize === size
                           ? "border-primary bg-primary text-primary-foreground shadow-medium"
                           : "border-border hover:border-primary hover:shadow-soft"
-                      }`}
+                        }`}
                     >
                       {size}
                     </button>
@@ -239,14 +237,14 @@ const ProductDetail = () => {
 
             {/* Stock Info para variante selecionada */}
             {selectedColor && selectedSize && (
-              <div className="mb-6 p-4 bg-secondary/50 rounded-lg">
-                <div className="flex items-center gap-2 text-sm">
-                  <Package className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">
-                    Estoque para {selectedColor} - {selectedSize}:{" "}
-                    <span className="font-semibold text-foreground">{selectedVariantStock} unidade(s)</span>
-                  </span>
-                </div>
+              <div className="mb-6">
+                <p
+                  className={`font-inter text-sm font-semibold flex items-center gap-2 ${selectedVariantStock > 0 ? "text-green-600" : "text-destructive"
+                    }`}
+                >
+                  <Package className="h-4 w-4" />
+                  {selectedVariantStock > 0 ? "Estoque disponível" : "Estoque indisponível"}
+                </p>
               </div>
             )}
 

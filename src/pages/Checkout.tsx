@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { ChevronLeft, CreditCard, Truck, Tag, Loader2 } from "lucide-react";
+import { ChevronLeft, CreditCard, Truck, Tag, Loader2, Landmark } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ interface Coupon {
 
 const Checkout = () => {
   const [deliveryMethod, setDeliveryMethod] = useState<"pickup" | "delivery">("delivery");
+  const [paymentMethod, setPaymentMethod] = useState("pix");
   const [deliveryType, setDeliveryType] = useState("");
   const [cep, setCep] = useState("");
   const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
@@ -46,10 +47,14 @@ const Checkout = () => {
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [cpf, setCpf] = useState("");
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardHolderName, setCardHolderName] = useState("");
+  const [cardExpiry, setCardExpiry] = useState("");
+  const [cardCvv, setCardCvv] = useState("");
   const [loadingCoupon, setLoadingCoupon] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [storeAddress, setStoreAddress] = useState<any>(null);
-  
+
   const { items, totalPrice, clearCart, updateQuantity } = useCart();
   const navigate = useNavigate();
 
@@ -248,7 +253,7 @@ const Checkout = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !whatsapp || !name || !cpf) {
       toast({
         title: "Campos obrigatórios",
@@ -267,6 +272,20 @@ const Checkout = () => {
         variant: "destructive",
       });
       return;
+    }
+
+    if (["credit_card", "debit_card"].includes(paymentMethod)) {
+      if (!cardNumber || !cardHolderName || !cardExpiry || !cardCvv) {
+        toast({
+          title: "Dados do cartão incompletos",
+          description: "Por favor, preencha todos os dados do cartão.",
+          variant: "destructive",
+        });
+        return;
+      }
+      // Futuramente, aqui você adicionaria a lógica para gerar o card_hash
+      // com a biblioteca do Pagar.me antes de enviar para o backend.
+      // Por agora, vamos simular o fluxo.
     }
 
     if (deliveryMethod === "delivery") {
@@ -363,45 +382,58 @@ const Checkout = () => {
         })),
       };
 
-      // Criar cobrança no AbacatePay
-      const { data, error } = await supabase.functions.invoke(
-        "create-abacatepay-checkout",
-        {
+      if (paymentMethod === "pix") {
+        // Lógica existente para PIX com AbacatePay
+        const { data, error } = await supabase.functions.invoke(
+          "create-abacatepay-checkout",
+          {
+            body: {
+              items: items.map(item => ({
+                productId: item.id,
+                name: item.name,
+                image: item.image,
+                price: item.price_value,
+                quantity: item.quantity,
+                selectedColor: item.selectedColor,
+                selectedSize: item.selectedSize,
+              })),
+              customerEmail: email,
+              customerName: name,
+              customerPhone: whatsapp,
+              customerCpf: cpf.replace(/\D/g, ""),
+              shippingCost: deliveryMethod === "pickup" ? 0 : shippingCost,
+              discountAmount: discount,
+              orderData,
+            },
+          }
+        );
+
+        if (error) throw error;
+        if (!data?.url) throw new Error("URL de pagamento não retornada");
+
+        window.location.href = data.url;
+
+      } else if (["credit_card", "debit_card"].includes(paymentMethod)) {
+        // Nova lógica para Pagar.me (Cartão de Crédito/Débito)
+        // Esta parte será implementada com o passo a passo abaixo
+        toast({
+          title: "Integração Pagar.me Pendente",
+          description: "A lógica de backend para pagamento com cartão ainda precisa ser criada.",
+        });
+        // Exemplo de como seria a chamada para a futura função:
+        /*
+        const { data, error } = await supabase.functions.invoke("create-pagarme-charge", {
           body: {
-            items: items.map(item => ({
-              productId: item.id,
-              name: item.name,
-              image: item.image,
-              price: item.price_value,
-              quantity: item.quantity,
-              selectedColor: item.selectedColor,
-              selectedSize: item.selectedSize,
-            })),
-            customerEmail: email,
-            customerName: name,
-            customerPhone: whatsapp,
-            customerCpf: cpf.replace(/\D/g, ""),
-            shippingCost: deliveryMethod === "pickup" ? 0 : shippingCost,
-            discountAmount: discount,
-            orderData,
-          },
-        }
-      );
-
-      if (error) {
-        console.error("Erro ao invocar função:", error);
-        throw error;
+            paymentMethod,
+            cardHash: "card_hash_gerado_pelo_pagarme.js", // Importante!
+            // ...outros dados do pedido (items, customer, shipping, etc.)
+          }
+        });
+        if (error) throw error;
+        // Redirecionar para página de sucesso/erro
+        navigate(`/order-tracking?code=${data.orderId}`);
+        */
       }
-
-      console.log("Resposta da edge function:", data);
-
-      if (!data?.url) {
-        throw new Error("URL de pagamento não retornada");
-      }
-
-      // Redirecionar para página de pagamento do AbacatePay
-      console.log("Redirecionando para:", data.url);
-      window.location.href = data.url;
     } catch (error) {
       console.error("Erro ao processar pagamento:", error);
       toast({
@@ -433,6 +465,17 @@ const Checkout = () => {
   const handleWhatsAppChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setWhatsapp(formatWhatsApp(e.target.value));
   };
+
+  const formatCardExpiry = (value: string) => {
+    const numbers = value.replace(/\D/g, "");
+    if (numbers.length <= 2) return numbers;
+    return `${numbers.slice(0, 2)}/${numbers.slice(2, 4)}`;
+  };
+
+  const handleCardExpiryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCardExpiry(formatCardExpiry(e.target.value));
+  };
+
 
   if (items.length === 0) {
     return (
@@ -477,41 +520,41 @@ const Checkout = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="name">Nome Completo *</Label>
-                  <Input 
-                    id="name" 
+                  <Input
+                    id="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    required 
+                    required
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email *</Label>
-                  <Input 
-                    id="email" 
-                    type="email" 
+                  <Input
+                    id="email"
+                    type="email"
                     placeholder="seu@email.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    required 
+                    required
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone">WhatsApp *</Label>
-                  <Input 
-                    id="phone" 
-                    type="tel" 
+                  <Input
+                    id="phone"
+                    type="tel"
                     placeholder="(00) 00000-0000"
                     value={whatsapp}
                     onChange={handleWhatsAppChange}
                     maxLength={15}
-                    required 
+                    required
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="cpf">CPF *</Label>
-                  <Input 
-                    id="cpf" 
-                    type="text" 
+                  <Input
+                    id="cpf"
+                    type="text"
                     placeholder="000.000.000-00"
                     value={cpf}
                     onChange={(e) => {
@@ -527,7 +570,7 @@ const Checkout = () => {
                       }
                     }}
                     maxLength={14}
-                    required 
+                    required
                   />
                 </div>
               </div>
@@ -556,8 +599,8 @@ const Checkout = () => {
                   <Label htmlFor="pickup" className="flex-1 cursor-pointer">
                     <p className="font-semibold">Retirar na loja</p>
                     <p className="text-sm text-muted-foreground">
-                      {storeAddress ? 
-                        `${storeAddress.store_address}, ${storeAddress.store_number} - ${storeAddress.store_neighborhood}, ${storeAddress.store_city}/${storeAddress.store_state}` 
+                      {storeAddress ?
+                        `${storeAddress.store_address}, ${storeAddress.store_number} - ${storeAddress.store_neighborhood}, ${storeAddress.store_city}/${storeAddress.store_state}`
                         : "Endereço será configurado pelo admin"}
                     </p>
                   </Label>
@@ -575,95 +618,95 @@ const Checkout = () => {
                   </h2>
                 </div>
                 <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="cep">CEP *</Label>
-                  <div className="flex gap-2">
-                    <Input 
-                      id="cep" 
-                      placeholder="00000-000"
-                      value={cep}
-                      onChange={handleCepChange}
-                      maxLength={9}
-                      required 
-                      className="flex-1"
-                    />
-                  </div>
-                  {cep.length === 9 && !loadingShipping && shippingOptions.length > 0 && (
-                    <p className="text-xs text-green-600">
-                      ✓ CEP válido. Frete calculado abaixo.
-                    </p>
-                  )}
-                  {loadingShipping && (
-                    <p className="text-xs text-muted-foreground flex items-center gap-2">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      Calculando frete...
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="address">Endereço *</Label>
-                  <Input 
-                    id="address" 
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    disabled
-                    required 
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="number">Número *</Label>
-                    <Input 
-                      id="number" 
-                      value={number}
-                      onChange={(e) => setNumber(e.target.value)}
-                      required 
-                    />
+                    <Label htmlFor="cep">CEP *</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="cep"
+                        placeholder="00000-000"
+                        value={cep}
+                        onChange={handleCepChange}
+                        maxLength={9}
+                        required
+                        className="flex-1"
+                      />
+                    </div>
+                    {cep.length === 9 && !loadingShipping && shippingOptions.length > 0 && (
+                      <p className="text-xs text-green-600">
+                        ✓ CEP válido. Frete calculado abaixo.
+                      </p>
+                    )}
+                    {loadingShipping && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-2">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Calculando frete...
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="complement">Complemento</Label>
-                    <Input 
-                      id="complement"
-                      value={complement}
-                      onChange={(e) => setComplement(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="neighborhood">Bairro *</Label>
-                  <Input 
-                    id="neighborhood"
-                    value={neighborhood}
-                    onChange={(e) => setNeighborhood(e.target.value)}
-                    disabled
-                    required 
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="city">Cidade *</Label>
-                    <Input 
-                      id="city"
-                      value={city}
-                      onChange={(e) => setCity(e.target.value)}
+                    <Label htmlFor="address">Endereço *</Label>
+                    <Input
+                      id="address"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
                       disabled
-                      required 
+                      required
                     />
                   </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="number">Número *</Label>
+                      <Input
+                        id="number"
+                        value={number}
+                        onChange={(e) => setNumber(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="complement">Complemento</Label>
+                      <Input
+                        id="complement"
+                        value={complement}
+                        onChange={(e) => setComplement(e.target.value)}
+                      />
+                    </div>
+                  </div>
                   <div className="space-y-2">
-                    <Label htmlFor="state">Estado *</Label>
-                    <Input 
-                      id="state"
-                      value={state}
-                      onChange={(e) => setState(e.target.value)}
+                    <Label htmlFor="neighborhood">Bairro *</Label>
+                    <Input
+                      id="neighborhood"
+                      value={neighborhood}
+                      onChange={(e) => setNeighborhood(e.target.value)}
                       disabled
-                      maxLength={2}
-                      required 
+                      required
                     />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="city">Cidade *</Label>
+                      <Input
+                        id="city"
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        disabled
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="state">Estado *</Label>
+                      <Input
+                        id="state"
+                        value={state}
+                        onChange={(e) => setState(e.target.value)}
+                        disabled
+                        maxLength={2}
+                        required
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
             )}
 
             {/* Tipo de Entrega */}
@@ -674,7 +717,7 @@ const Checkout = () => {
                 </h2>
                 <RadioGroup value={deliveryType} onValueChange={setDeliveryType}>
                   {shippingOptions.map((option) => (
-                    <div 
+                    <div
                       key={option.type}
                       className="flex items-center space-x-3 p-4 border-2 border-border rounded-lg cursor-pointer hover:border-primary transition-colors"
                     >
@@ -733,8 +776,8 @@ const Checkout = () => {
                       Cupom {appliedCoupon.code} aplicado!
                     </p>
                     <p className="text-sm text-green-600 dark:text-green-500">
-                      Desconto de {appliedCoupon.discount_type === "percentage" 
-                        ? `${appliedCoupon.discount_value}%` 
+                      Desconto de {appliedCoupon.discount_type === "percentage"
+                        ? `${appliedCoupon.discount_value}%`
                         : `R$ ${appliedCoupon.discount_value.toFixed(2)}`}
                     </p>
                   </div>
@@ -758,8 +801,10 @@ const Checkout = () => {
                   Pagamento
                 </h2>
               </div>
-              <div className="p-4 border-2 border-primary bg-primary/5 rounded-lg">
-                <div className="flex items-center gap-3">
+
+              <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="space-y-3">
+                <Label htmlFor="pix" className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors ${paymentMethod === 'pix' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}>
+                  <RadioGroupItem value="pix" id="pix" />
                   <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
                     <span className="text-lg">💠</span>
                   </div>
@@ -767,21 +812,75 @@ const Checkout = () => {
                     <p className="font-semibold text-foreground">PIX</p>
                     <p className="text-sm text-muted-foreground">Pagamento instantâneo</p>
                   </div>
-                </div>
-              </div>
+                </Label>
+                <Label htmlFor="credit_card" className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors ${paymentMethod === 'credit_card' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}>
+                  <RadioGroupItem value="credit_card" id="credit_card" />
+                  <CreditCard className="h-6 w-6 text-primary" />
+                  <div>
+                    <p className="font-semibold text-foreground">Cartão de Crédito</p>
+                    <p className="text-sm text-muted-foreground">Pague em até 12x</p>
+                  </div>
+                </Label>
+                <Label htmlFor="debit_card" className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors ${paymentMethod === 'debit_card' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}>
+                  <RadioGroupItem value="debit_card" id="debit_card" />
+                  <Landmark className="h-6 w-6 text-primary" />
+                  <div>
+                    <p className="font-semibold text-foreground">Cartão de Débito</p>
+                    <p className="text-sm text-muted-foreground">Pagamento à vista</p>
+                  </div>
+                </Label>
+              </RadioGroup>
 
-              <div className="mt-4 p-4 bg-muted/50 rounded-lg">
-                <p className="text-xs text-muted-foreground">
-                  Ao finalizar o pedido, você será redirecionada para o ambiente seguro da
-                  <span className="font-semibold"> AbacatePay</span> para pagar via <span className="font-semibold">PIX</span>
-                  , com QR Code gerado automaticamente.
-                </p>
-              </div>
+              {/* Formulário do Cartão */}
+              {(paymentMethod === "credit_card" || paymentMethod === "debit_card") && (
+                <div className="space-y-4 pt-4 border-t border-border mt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="card-number">Número do Cartão</Label>
+                    <Input id="card-number" placeholder="0000 0000 0000 0000" value={cardNumber} onChange={e => setCardNumber(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="card-holder">Nome no Cartão</Label>
+                    <Input id="card-holder" placeholder="Nome completo" value={cardHolderName} onChange={e => setCardHolderName(e.target.value)} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="card-expiry">Validade (MM/AA)</Label>
+                      <Input
+                        id="card-expiry"
+                        placeholder="MM/AA"
+                        value={cardExpiry}
+                        onChange={handleCardExpiryChange}
+                        maxLength={5}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="card-cvv">CVV</Label>
+                      <Input
+                        id="card-cvv"
+                        placeholder="123"
+                        value={cardCvv}
+                        onChange={e => setCardCvv(e.target.value)}
+                        maxLength={4}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {paymentMethod === 'pix' && (
+                <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground">
+                    Ao finalizar o pedido, você será redirecionada para o ambiente seguro da
+                    <span className="font-semibold"> AbacatePay</span> para pagar via <span className="font-semibold">PIX</span>
+                    , com QR Code gerado automaticamente.
+                  </p>
+                </div>
+              )}
             </div>
 
-            <Button 
-              type="submit" 
-              size="lg" 
+            <Button
+              type="submit"
+              size="lg"
               className="w-full h-14 text-lg font-semibold"
               disabled={submitting || (deliveryMethod === "delivery" && shippingOptions.length === 0)}
             >
@@ -845,10 +944,10 @@ const Checkout = () => {
                 <div className="flex justify-between">
                   <p className="font-inter text-foreground">Frete</p>
                   <p className="font-inter font-semibold">
-                    {cep.length === 9 && shippingOptions.length > 0 
-                      ? shippingCost === 0 
-                        ? "Grátis" 
-                        : `R$ ${shippingCost.toFixed(2)}` 
+                    {cep.length === 9 && shippingOptions.length > 0
+                      ? shippingCost === 0
+                        ? "Grátis"
+                        : `R$ ${shippingCost.toFixed(2)}`
                       : "Calcule o CEP"}
                   </p>
                 </div>
